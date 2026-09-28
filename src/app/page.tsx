@@ -1,69 +1,220 @@
-import Image from "next/image";
+"use client";
+
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  BarChart3,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  Mail,
+  Shield,
+} from "lucide-react";
+
+function IllustrationPlaceholder() {
+  return (
+    <div className="illustration" aria-hidden="true">
+      <div className="coin coin-one">$</div>
+      <div className="window window-large">
+        <div className="window-bar">
+          <i />
+          <i />
+          <i />
+        </div>
+        <div className="donut donut-main" />
+        <div className="chart-lines">
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+      <div className="window window-small">
+        <div className="window-bar">
+          <i />
+          <i />
+          <i />
+        </div>
+        <div className="wave" />
+        <div className="mini-bars">
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+      <div className="window window-bottom">
+        <div className="window-bar">
+          <i />
+          <i />
+          <i />
+        </div>
+        <div className="bar-chart">
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+      <div className="calculator">
+        <div className="calculator-display">1738</div>
+        <div className="calculator-grid">
+          {[
+            "C",
+            "⌫",
+            "%",
+            "÷",
+            "7",
+            "8",
+            "9",
+            "×",
+            "4",
+            "5",
+            "6",
+            "−",
+            "1",
+            "2",
+            "3",
+            "+",
+          ].map((key) => (
+            <span key={key}>{key}</span>
+          ))}
+        </div>
+      </div>
+      <div className="magnifier" />
+      <div className="gear">
+        <BarChart3 size={28} strokeWidth={2.5} />
+      </div>
+      <div className="person">
+        <div className="person-head" />
+        <div className="person-body" />
+        <div className="person-arm person-arm-left" />
+        <div className="person-arm person-arm-right" />
+        <div className="person-leg person-leg-left" />
+        <div className="person-leg person-leg-right" />
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+
+  function handleLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (
+      email.trim().toLowerCase() !== "admin@gmail.com" ||
+      password !== "Mentawai123!"
+    ) {
+      setError("Email atau password belum sesuai.");
+      return;
+    }
+
+    window.sessionStorage.setItem("mentawai-auth", "admin");
+    router.push("/dashboard");
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="login-page">
+      <section className="welcome-panel">
+        <div
+          className="brand-mark"
+          aria-label="Logo Kabupaten Kepulauan Mentawai"
+        >
+          <Shield size={42} strokeWidth={1.5} />
+        </div>
+        <div className="welcome-content">
+          <IllustrationPlaceholder />
+          <div className="welcome-copy ">
+            <h1 className="text-[24px]! font-bold">
+              Sistem Monitoring PBJT Terpadu
+            </h1>
+            <p>
+              Pengawasan transaksi real-time dan rekonsiliasi pajak PBJT
+              Kabupaten Kepulauan Mentawai dalam satu platform terpusat.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="form-panel">
+        <div className="form-content">
+          <header className="form-heading">
+            <h2>Welcome back</h2>
+            <p>Log in to your account</p>
+          </header>
+          <form className="login-card" onSubmit={handleLogin}>
+            <button type="button" className="google-button">
+              <span className="google-g">G</span>Continue with Google
+            </button>
+            <div className="or-divider">
+              <span>OR</span>
+            </div>
+            <div className="field-group">
+              <label htmlFor="email">Email</label>
+              <div className="input-shell">
+                <Mail size={20} />
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setError("");
+                  }}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                />
+              </div>
+            </div>
+            <div className="field-group">
+              <div className="password-label-row">
+                <label htmlFor="password">Password</label>
+                <Link href="/forgot-password">Forgot password?</Link>
+              </div>
+              <div className="input-shell">
+                <LockKeyhole size={20} />
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setError("");
+                  }}
+                  placeholder="********"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+                </button>
+              </div>
+            </div>
+            {error && (
+              <p className="login-error" role="alert">
+                {error}
+              </p>
+            )}
+            <button type="submit" className="login-button">
+              Log in
+            </button>
+          </form>
+          <p className="signup-copy">
+            Don&apos;t have an account? <Link href="/register">Create one</Link>
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </section>
+    </main>
   );
 }
