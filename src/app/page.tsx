@@ -11,6 +11,8 @@ import {
   Mail,
   Shield,
 } from "lucide-react";
+import { nameFromEmail } from "@/lib/user-profile";
+import { mockConfig } from "@/lib/mock-data";
 
 function IllustrationPlaceholder() {
   return (
@@ -108,15 +110,14 @@ export default function Home() {
 
   function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (
-      email.trim().toLowerCase() !== "admin@gmail.com" ||
-      password !== "Mentawai123!"
-    ) {
+    if (!email.trim() || password !== mockConfig.demoPassword) {
       setError("Email atau password belum sesuai.");
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
     window.sessionStorage.setItem("mentawai-auth", "admin");
+    window.sessionStorage.setItem("mentawai-user", JSON.stringify({ email: normalizedEmail, name: nameFromEmail(normalizedEmail), role: "Administrator", avatar: "" }));
     router.push("/dashboard");
   }
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
@@ -49,6 +50,8 @@ type SidebarProps = {
 };
 
 export function Sidebar({ mobileOpen, onMobileClose, activeHref }: SidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -65,7 +68,14 @@ export function Sidebar({ mobileOpen, onMobileClose, activeHref }: SidebarProps)
             <p className="sidebar-group-label">{group.label}</p>
             {group.items.map((item) => {
               const Icon = item.icon;
-              return <a className={cn((item.href === activeHref || (!activeHref && item.active)) && "active")} href={item.href} key={item.label} title={collapsed ? item.label : undefined} onClick={onMobileClose}><Icon size={18} /><span className="sidebar-item-label">{item.label}</span></a>;
+              function handleNavigation(event: MouseEvent<HTMLAnchorElement>) {
+                if (pathname !== "/dashboard") {
+                  event.preventDefault();
+                  router.push(`/dashboard${item.href}`);
+                }
+                onMobileClose();
+              }
+              return <a className={cn((item.href === activeHref || (!activeHref && item.active)) && "active")} href={item.href} key={item.label} title={collapsed ? item.label : undefined} onClick={handleNavigation}><Icon size={18} /><span className="sidebar-item-label">{item.label}</span></a>;
             })}
           </div>
         ))}

@@ -1,6 +1,8 @@
 export type BusinessType = "Restoran" | "Hotel";
 export type MposStatus = "online" | "syncing" | "offline";
 export type PaymentMethod = "QRIS" | "Kartu Debit" | "Tunai" | "Transfer Bank" | "Virtual Account";
+export type AlertType = "SPTPD" | "REKONSILIASI" | "STPD" | "MPOS";
+export type AlertLevel = "warning" | "critical";
 
 export type Taxpayer = {
   id: string;
@@ -11,6 +13,32 @@ export type Taxpayer = {
   village: string;
   active: boolean;
   mposStatus: MposStatus;
+  image: string;
+  address: string;
+  registeredDate: string;
+  ownerName: string;
+  ownerNpwp: string;
+  ownerContact: string;
+  ownerEmail: string;
+};
+
+export type AlertRecord = {
+  id: string;
+  title: string;
+  taxpayerId: string;
+  type: AlertType;
+  level: AlertLevel;
+  detail: string;
+  time: string;
+};
+
+export type MposDevice = {
+  id: string;
+  taxpayerId: string;
+  device: string;
+  lastSync: string;
+  transactionsToday: number;
+  status: "Online" | "Syncing" | "Offline";
 };
 
 export type Transaction = {
@@ -32,28 +60,42 @@ export type SptpdRecord = {
   reportedAmount: number;
 };
 
+export type SptpdPeriodRecord = {
+  id: string;
+  taxpayerId: string;
+  period: string;
+  monthIndex: number;
+  year: number;
+  mposAmount: number;
+  reportedAmount: number;
+  pbjtAmount: number;
+  status: "Sudah Dilaporkan" | "Perlu Ditinjau" | "Belum Dilaporkan";
+};
+
 export const mockConfig = {
   currentYear: 2026,
   currentPeriod: "September",
   pbjtRate: 0.1,
   stpdOutstanding: 13574400,
   lastUpdated: "23 September 2026, 13:42 WIB",
+  demoEmail: "admin@gmail.com",
+  demoPassword: "Mentawai123!",
 };
 
 export const mockTaxpayers: Taxpayer[] = [
-  { id: "wp-001", name: "Hotel Mentawai Resort", type: "Hotel", district: "Sipora Selatan", districtCode: "13.09.10", village: "Sioban", active: true, mposStatus: "online" },
-  { id: "wp-002", name: "Sipora Beach Resort", type: "Hotel", district: "Sipora Selatan", districtCode: "13.09.10", village: "Tuapejat", active: true, mposStatus: "online" },
-  { id: "wp-003", name: "Siberut Island Resort", type: "Hotel", district: "Siberut Barat", districtCode: "13.09.05", village: "Simalegi", active: true, mposStatus: "offline" },
-  { id: "wp-004", name: "Mentawai Waves Lodge", type: "Hotel", district: "Siberut Utara", districtCode: "13.09.04", village: "Muara Sikabaluan", active: true, mposStatus: "online" },
-  { id: "wp-005", name: "Pagai Surf Resort", type: "Hotel", district: "Pagai Selatan", districtCode: "13.09.10", village: "Malakopa", active: true, mposStatus: "syncing" },
-  { id: "wp-006", name: "Mentawai Coffee House", type: "Restoran", district: "Sipora Utara", districtCode: "13.09.01", village: "Silaibu", active: true, mposStatus: "online" },
-  { id: "wp-007", name: "Tuapejat Seafood", type: "Restoran", district: "Sipora Utara", districtCode: "13.09.01", village: "Betumonga", active: true, mposStatus: "online" },
-  { id: "wp-008", name: "Mentawai Grille", type: "Restoran", district: "Siberut Selatan", districtCode: "13.09.03", village: "Maileppet", active: true, mposStatus: "online" },
-  { id: "wp-009", name: "Pagai Beach Cafe", type: "Restoran", district: "Pagai Selatan", districtCode: "13.09.10", village: "Malakopa", active: true, mposStatus: "online" },
-  { id: "wp-010", name: "Siberut Restaurant", type: "Restoran", district: "Siberut Barat Daya", districtCode: "13.09.06", village: "Katurei", active: false, mposStatus: "offline" },
+  { id: "wp-001", name: "Hotel Mentawai Resort", type: "Hotel", district: "Sipora Selatan", districtCode: "13.09.10", village: "Sioban", active: true, mposStatus: "online", image: "/assets/taxpayers/hotel-mentawai-resort.webp", address: "Jl. Pantai Tuapejat", registeredDate: "15 Jan 2024", ownerName: "Pak Andri", ownerNpwp: "01.234.567.0-001.000", ownerContact: "081234500001", ownerEmail: "andri@gmail.com" },
+  { id: "wp-002", name: "Sipora Beach Resort", type: "Hotel", district: "Sipora Selatan", districtCode: "13.09.10", village: "Tuapejat", active: true, mposStatus: "online", image: "/assets/taxpayers/sipora-beach-resort.webp", address: "Jl. Pantai Sioban", registeredDate: "10 Feb 2024", ownerName: "Bu Meri", ownerNpwp: "02.345.678.0-002.000", ownerContact: "081234500002", ownerEmail: "meri@gmail.com" },
+  { id: "wp-003", name: "Siberut Island Resort", type: "Hotel", district: "Siberut Barat", districtCode: "13.09.05", village: "Simalegi", active: true, mposStatus: "offline", image: "/assets/taxpayers/siberut-island-resort.webp", address: "Jl. Pantai Siberut", registeredDate: "18 Feb 2024", ownerName: "Pak Rudi", ownerNpwp: "03.456.789.0-003.000", ownerContact: "081234500003", ownerEmail: "rudi@gmail.com" },
+  { id: "wp-004", name: "Mentawai Waves Lodge", type: "Hotel", district: "Siberut Utara", districtCode: "13.09.04", village: "Muara Sikabaluan", active: true, mposStatus: "online", image: "/assets/taxpayers/mentawai-waves-lodge.webp", address: "Jl. Pantai Tuapejat", registeredDate: "15 Jan 2024", ownerName: "Pengelola Mentawai Waves Lodge", ownerNpwp: "04.567.890.0-004.000", ownerContact: "081234500004", ownerEmail: "waves@gmail.com" },
+  { id: "wp-005", name: "Pagai Surf Resort", type: "Hotel", district: "Pagai Selatan", districtCode: "13.09.10", village: "Malakopa", active: true, mposStatus: "syncing", image: "/assets/taxpayers/pagai-surf-resort.webp", address: "Jl. Pantai Pagai", registeredDate: "20 Jan 2024", ownerName: "Bu Sinta", ownerNpwp: "05.678.901.0-005.000", ownerContact: "081234500005", ownerEmail: "sinta@gmail.com" },
+  { id: "wp-006", name: "Mentawai Coffee House", type: "Restoran", district: "Sipora Utara", districtCode: "13.09.01", village: "Silaibu", active: true, mposStatus: "online", image: "/assets/taxpayers/mentawai-coffee-house.webp", address: "Jl. Raya Silaibu", registeredDate: "22 Mar 2024", ownerName: "Bu Sari", ownerNpwp: "06.789.012.0-006.000", ownerContact: "081234500006", ownerEmail: "sari@gmail.com" },
+  { id: "wp-007", name: "Tuapejat Seafood", type: "Restoran", district: "Sipora Utara", districtCode: "13.09.01", village: "Betumonga", active: true, mposStatus: "online", image: "/assets/taxpayers/tuapejat-seafood.webp", address: "Jl. Pelabuhan Tuapejat", registeredDate: "2 Apr 2024", ownerName: "Pak Dedi", ownerNpwp: "07.890.123.0-007.000", ownerContact: "081234500007", ownerEmail: "dedi@gmail.com" },
+  { id: "wp-008", name: "Mentawai Grille", type: "Restoran", district: "Siberut Selatan", districtCode: "13.09.03", village: "Maileppet", active: true, mposStatus: "online", image: "/assets/taxpayers/mentawai-grille.webp", address: "Jl. Raya Maileppet", registeredDate: "12 Apr 2024", ownerName: "Bu Rina", ownerNpwp: "08.901.234.0-008.000", ownerContact: "081234500008", ownerEmail: "rina@gmail.com" },
+  { id: "wp-009", name: "Pagai Beach Cafe", type: "Restoran", district: "Pagai Selatan", districtCode: "13.09.10", village: "Malakopa", active: true, mposStatus: "online", image: "/assets/taxpayers/pagai-beach-cafe.webp", address: "Jl. Pantai Malakopa", registeredDate: "16 Apr 2024", ownerName: "Pak Yanto", ownerNpwp: "09.012.345.0-009.000", ownerContact: "081234500009", ownerEmail: "yanto@gmail.com" },
+  { id: "wp-010", name: "Siberut Restaurant", type: "Restoran", district: "Siberut Barat Daya", districtCode: "13.09.06", village: "Katurei", active: false, mposStatus: "offline", image: "/assets/taxpayers/siberut-restaurant.webp", address: "Jl. Raya Katurei", registeredDate: "25 Apr 2024", ownerName: "Pak Beni", ownerNpwp: "10.123.456.0-010.000", ownerContact: "081234500010", ownerEmail: "beni@gmail.com" },
 ];
 
-export const mockTransactions: Transaction[] = [
+const seedTransactions: Transaction[] = [
   { id: "INV-2026-00018", taxpayerId: "wp-001", date: "2026-09-18", time: "18.15", amount: 33660000, paymentMethod: "Kartu Debit", status: "Paid" },
   { id: "INV-2026-00036", taxpayerId: "wp-002", date: "2026-09-18", time: "09.22", amount: 27225000, paymentMethod: "QRIS", status: "Paid" },
   { id: "INV-2026-00054", taxpayerId: "wp-003", date: "2026-09-18", time: "10.29", amount: 22770000, paymentMethod: "Virtual Account", status: "Paid" },
@@ -76,6 +118,31 @@ export const mockTransactions: Transaction[] = [
   { id: "INV-2026-00188", taxpayerId: "wp-009", date: "2026-03-18", time: "09.30", amount: 59595000, paymentMethod: "QRIS", status: "Paid" },
 ];
 
+const generatedTransactions: Transaction[] = [2025, 2026].flatMap((year) => {
+  const monthCount = year === mockConfig.currentYear ? 9 : 12;
+  return mockTaxpayers.flatMap((taxpayer, taxpayerIndex) => Array.from({ length: monthCount * 8 }, (_, transactionIndex) => {
+    const month = Math.floor(transactionIndex / 8);
+    const sequence = transactionIndex % 8;
+    const baseAmount = taxpayer.type === "Hotel" ? 5800000 : 2400000;
+    const variation = (taxpayerIndex * 731000 + month * 421000 + sequence * 183000 + (year === 2025 ? 90000 : 0)) % 8000000;
+    const day = 2 + ((taxpayerIndex * 3 + month * 2 + sequence * 4) % 24);
+    const hour = 8 + ((sequence * 2 + taxpayerIndex) % 11);
+    const minute = (sequence * 7 + taxpayerIndex * 3) % 60;
+    const invoiceNumber = String(taxpayerIndex * 1000 + month * 8 + sequence + 2000).padStart(6, "0");
+    return {
+      id: `INV-${year}-${invoiceNumber}`,
+      taxpayerId: taxpayer.id,
+      date: `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+      time: `${String(hour).padStart(2, "0")}.${String(minute).padStart(2, "0")}`,
+      amount: baseAmount + variation,
+      paymentMethod: ["QRIS", "Kartu Debit", "Tunai", "Transfer Bank", "Virtual Account"][sequence % 5] as PaymentMethod,
+      status: sequence === 7 && month % 3 === 0 ? "Pending" : "Paid",
+    };
+  }));
+});
+
+export const mockTransactions: Transaction[] = [...seedTransactions, ...generatedTransactions];
+
 export const mockSptpd: SptpdRecord[] = mockTaxpayers.map((taxpayer) => ({
   id: `sptpd-${taxpayer.id}`,
   taxpayerId: taxpayer.id,
@@ -86,6 +153,32 @@ export const mockSptpd: SptpdRecord[] = mockTaxpayers.map((taxpayer) => ({
 }));
 
 export const monthLabels = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+export const monthLabelsLong = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+export function getSptpdHistory(taxpayerId: string, year = mockConfig.currentYear): SptpdPeriodRecord[] {
+  const monthCount = year === mockConfig.currentYear ? 9 : 12;
+  return Array.from({ length: monthCount }, (_, monthIndex) => {
+    const mposAmount = mockTransactions.filter((transaction) => {
+      const date = new Date(transaction.date);
+      return transaction.taxpayerId === taxpayerId && date.getFullYear() === year && date.getMonth() === monthIndex;
+    }).reduce((sum, transaction) => sum + transaction.amount, 0);
+    const isCurrentPeriod = year === mockConfig.currentYear && monthIndex === 8;
+    const isReviewPeriod = year === mockConfig.currentYear && monthIndex === 7;
+    const reportedAmount = isCurrentPeriod ? 0 : isReviewPeriod ? Math.round(mposAmount * 0.8) : mposAmount;
+    const status = isCurrentPeriod ? "Belum Dilaporkan" : reportedAmount < mposAmount ? "Perlu Ditinjau" : "Sudah Dilaporkan";
+    return {
+      id: `sptpd-${taxpayerId}-${year}-${String(monthIndex + 1).padStart(2, "0")}`,
+      taxpayerId,
+      period: monthLabelsLong[monthIndex],
+      monthIndex,
+      year,
+      mposAmount,
+      reportedAmount,
+      pbjtAmount: Math.round(reportedAmount * mockConfig.pbjtRate),
+      status,
+    };
+  });
+}
 export const mockMonthlySeries = {
   2026: {
     estimate: [25, 23, 28, 32, 35, 38, 42, 45, 40, null, null, null],
@@ -97,14 +190,41 @@ export const mockMonthlySeries = {
   },
 } as const;
 
-export const mockAlerts = [
-  { title: "SPTPD belum dilaporkan", taxpayerId: "wp-001", type: "SPTPD" },
-  { title: "SPTPD belum dilaporkan", taxpayerId: "wp-002", type: "SPTPD" },
-  { title: "SPTPD belum dilaporkan", taxpayerId: "wp-003", type: "SPTPD" },
-  { title: "SPTPD belum dilaporkan", taxpayerId: "wp-004", type: "SPTPD" },
-  { title: "SPTPD belum dilaporkan", taxpayerId: "wp-005", type: "SPTPD" },
-  { title: "Selisih rekonsiliasi terdeteksi", taxpayerId: "wp-002", type: "REKONSILIASI" },
+export const mockAlerts: AlertRecord[] = [
+  { id: "sptpd-001", title: "SPTPD belum dilaporkan", taxpayerId: "wp-001", type: "SPTPD", level: "warning", detail: "September 2026", time: "28 Sep 2026 · 18.13.34" },
+  { id: "sptpd-002", title: "SPTPD belum dilaporkan", taxpayerId: "wp-002", type: "SPTPD", level: "warning", detail: "September 2026", time: "28 Sep 2026 · 17.13.34" },
+  { id: "sptpd-003", title: "SPTPD belum dilaporkan", taxpayerId: "wp-003", type: "SPTPD", level: "warning", detail: "September 2026", time: "28 Sep 2026 · 16.13.34" },
+  { id: "sptpd-004", title: "SPTPD belum dilaporkan", taxpayerId: "wp-004", type: "SPTPD", level: "warning", detail: "September 2026", time: "28 Sep 2026 · 15.13.34" },
+  { id: "sptpd-005", title: "SPTPD belum dilaporkan", taxpayerId: "wp-005", type: "SPTPD", level: "warning", detail: "September 2026", time: "28 Sep 2026 · 14.13.34" },
+  { id: "rek-001", title: "Selisih rekonsiliasi terdeteksi", taxpayerId: "wp-006", type: "REKONSILIASI", level: "warning", detail: "selisih omzet Rp 6.000.000", time: "28 Sep 2026 · 13.13.34" },
+  { id: "rek-002", title: "Selisih rekonsiliasi terdeteksi", taxpayerId: "wp-005", type: "REKONSILIASI", level: "warning", detail: "selisih omzet Rp 0", time: "28 Sep 2026 · 12.13.34" },
+  { id: "stpd-001", title: "STPD belum diselesaikan", taxpayerId: "wp-001", type: "STPD", level: "critical", detail: "sisa Rp 5.656.000", time: "28 Sep 2026 · 10.13.34" },
+  { id: "stpd-002", title: "STPD belum diselesaikan", taxpayerId: "wp-003", type: "STPD", level: "critical", detail: "sisa Rp 4.444.000", time: "28 Sep 2026 · 09.13.34" },
+  { id: "stpd-003", title: "STPD belum diselesaikan", taxpayerId: "wp-009", type: "STPD", level: "critical", detail: "sisa Rp 2.424.000", time: "28 Sep 2026 · 08.13.34" },
+  { id: "stpd-004", title: "STPD belum diselesaikan", taxpayerId: "wp-009", type: "STPD", level: "critical", detail: "sisa Rp 2.020.000", time: "28 Sep 2026 · 07.13.34" },
+  { id: "mpos-001", title: "MPOS offline terdeteksi", taxpayerId: "wp-003", type: "MPOS", level: "critical", detail: "offline lebih dari 24 jam", time: "28 Sep 2026 · 06.13.34" },
+  { id: "mpos-002", title: "MPOS belum tersinkronisasi", taxpayerId: "wp-010", type: "MPOS", level: "warning", detail: "sinkronisasi terakhir tidak tersedia", time: "28 Sep 2026 · 05.13.34" },
 ];
+
+export const mockMposDevices: MposDevice[] = [
+  { id: "device-001", taxpayerId: "wp-001", device: "MPOS-A1-101", lastSync: "13.30.00", transactionsToday: 12, status: "Online" },
+  { id: "device-002", taxpayerId: "wp-002", device: "MPOS-A1-102", lastSync: "13.28.00", transactionsToday: 8, status: "Online" },
+  { id: "device-003", taxpayerId: "wp-003", device: "MPOS-B2-201", lastSync: "08.12.00", transactionsToday: 0, status: "Offline" },
+  { id: "device-004", taxpayerId: "wp-004", device: "MPOS-C3-301", lastSync: "13.35.00", transactionsToday: 15, status: "Online" },
+  { id: "device-005", taxpayerId: "wp-005", device: "MPOS-D4-401", lastSync: "11.50.00", transactionsToday: 6, status: "Syncing" },
+  { id: "device-006", taxpayerId: "wp-006", device: "MPOS-A1-103", lastSync: "13.32.00", transactionsToday: 22, status: "Online" },
+  { id: "device-007", taxpayerId: "wp-007", device: "MPOS-A1-104", lastSync: "13.20.00", transactionsToday: 18, status: "Online" },
+  { id: "device-008", taxpayerId: "wp-008", device: "MPOS-B2-202", lastSync: "14.00.00", transactionsToday: 0, status: "Offline" },
+  { id: "device-009", taxpayerId: "wp-009", device: "MPOS-A1-105", lastSync: "13.10.00", transactionsToday: 14, status: "Online" },
+  { id: "device-010", taxpayerId: "wp-010", device: "MPOS-A1-106", lastSync: "13.40.00", transactionsToday: 20, status: "Online" },
+];
+
+export const mockStpdSeeds = [
+  { taxpayerId: "wp-001", monthIndex: 6, status: "Overdue", paidRate: 0 },
+  { taxpayerId: "wp-003", monthIndex: 5, status: "Overdue", paidRate: 0 },
+  { taxpayerId: "wp-009", monthIndex: 6, status: "Partial", paidRate: .4 },
+  { taxpayerId: "wp-009", monthIndex: 7, status: "Outstanding", paidRate: 0 },
+] as const;
 
 export const mockAnomalies = [
   ["MPOS Offline", "wp-003", "Threshold: Online", "Deteksi: Offline > 24 jam", "Bahaya"],

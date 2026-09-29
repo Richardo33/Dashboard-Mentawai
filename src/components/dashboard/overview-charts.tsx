@@ -1,15 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { ApexOptions } from "apexcharts";
 import { RefreshCw, Wifi, WifiOff } from "lucide-react";
-import { formatRupiah, getMposStatusTotals, getSectorRevenue, monthLabels, mockMonthlySeries } from "@/lib/mock-data";
+import { formatRupiah, getSptpdHistory, monthLabels, mockConfig, mockTaxpayers, mockTransactions, type BusinessType } from "@/lib/mock-data";
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 const months = monthLabels;
-const yearSeries = mockMonthlySeries;
 
 function getScale(values: Array<number | null>) {
   const maximum = Math.max(...values.filter((value): value is number => value !== null), 1);
@@ -25,7 +23,7 @@ function getColumnOptions(values: Array<number | null>): ApexOptions {
     plotOptions: { bar: { horizontal: false, columnWidth: "62%", borderRadius: 4, borderRadiusApplication: "end" } },
     dataLabels: { enabled: false },
     stroke: { show: true, width: 2, colors: ["transparent"] },
-    grid: { borderColor: "#edf1f6", strokeDashArray: 4, padding: { top: 0, right: 4, bottom: 0, left: 8 } },
+    grid: { borderColor: "#c7d6e6", strokeDashArray: 4, position: "back", padding: { top: 0, right: 4, bottom: 0, left: 8 } },
     xaxis: { categories: months, labels: { style: { colors: "#6e85a3", fontSize: "12px" } }, axisBorder: { show: false }, axisTicks: { show: false } },
     yaxis: { min: 0, max: scale.max, tickAmount: 4, labels: { formatter: (value) => `${value} Jt`, style: { colors: "#8aa0bc", fontSize: "12px" } } },
     legend: { show: false },
@@ -49,17 +47,23 @@ function getColumnOptions(values: Array<number | null>): ApexOptions {
 
 const donutOptions: ApexOptions = { chart: { type: "donut", animations: { enabled: true, speed: 850 } }, labels: ["Restoran", "Hotel"], colors: ["#2864e8", "#263f91"], dataLabels: { enabled: false }, legend: { show: false }, stroke: { width: 3, colors: ["#fff"] }, plotOptions: { pie: { donut: { size: "66%" } } }, tooltip: { y: { formatter: (value) => `Rp ${value}.000.000` } } };
 
-export function OverviewCharts() {
-  const [year, setYear] = useState<keyof typeof yearSeries>(2026);
-  const data = yearSeries[year];
-  const sectors = getSectorRevenue();
-  const mpos = getMposStatusTotals();
-  const columnOptions = useMemo(() => getColumnOptions([...data.estimate, ...data.realization]), [data]);
+export function OverviewCharts({ year, businessType, district }: { year: number; businessType: string; district: string }) {
+  const taxpayers = mockTaxpayers.filter((taxpayer) => (businessType === "Semua" || taxpayer.type === businessType) && (district === "Semua" || taxpayer.district === district));
+  const taxpayerIds = new Set(taxpayers.map((taxpayer) => taxpayer.id));
+  const transactions = mockTransactions.filter((transaction) => taxpayerIds.has(transaction.taxpayerId) && new Date(transaction.date).getFullYear() === year);
+  const data = {
+    estimate: monthLabels.map((_, monthIndex) => transactions.filter((transaction) => new Date(transaction.date).getMonth() === monthIndex).reduce((sum, transaction) => sum + transaction.amount, 0) * mockConfig.pbjtRate / 1000000),
+    realization: monthLabels.map((_, monthIndex) => taxpayers.reduce((sum, taxpayer) => sum + getSptpdHistory(taxpayer.id, year).filter((record) => record.monthIndex === monthIndex).reduce((monthTotal, record) => monthTotal + record.pbjtAmount, 0), 0) / 1000000),
+  };
+  const sectors: Record<BusinessType, number> = { Restoran: 0, Hotel: 0 };
+  transactions.forEach((transaction) => { const taxpayer = mockTaxpayers.find((item) => item.id === transaction.taxpayerId); if (taxpayer) sectors[taxpayer.type] += transaction.amount; });
+  const mpos = { online: taxpayers.filter((taxpayer) => taxpayer.mposStatus === "online").length, syncing: taxpayers.filter((taxpayer) => taxpayer.mposStatus === "syncing").length, offline: taxpayers.filter((taxpayer) => taxpayer.mposStatus === "offline").length };
+  const columnOptions = getColumnOptions([...data.estimate, ...data.realization]);
 
   return (
     <div className="overview-charts-grid">
       <section className="overview-chart-card">
-        <div className="overview-chart-header"><div><h2>Estimasi PBJT vs Realisasi Pembayaran</h2><p>Tren per bulan - Januari {year} s/d Desember {year}</p></div><div className="chart-filters"><label className="chart-year-filter">Tahun <select value={year} onChange={(event) => setYear(Number(event.target.value) as keyof typeof yearSeries)}><option value="2026">2026</option><option value="2025">2025</option></select></label></div></div>
+        <div className="overview-chart-header"><div><h2>Estimasi PBJT vs Realisasi Pembayaran</h2><p>Tren per bulan - Januari {year} s/d Desember {year}</p></div></div>
         <div className="chart-legend"><span><i className="legend-estimate" />Estimasi</span><span><i className="legend-realization" />Realisasi</span></div>
         <div className="overview-column-chart"><Chart options={columnOptions} series={[{ name: "Estimasi", data: [...data.estimate] }, { name: "Realisasi", data: [...data.realization] }]} type="bar" height="400" /></div>
       </section>
