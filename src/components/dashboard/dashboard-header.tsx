@@ -20,12 +20,12 @@ export function DashboardHeader({ title, alert, onMenuOpen, onLogout }: Dashboar
   const [alertIndex, setAlertIndex] = useState(0);
 
   const alertItems = [
-    { message: `${mockAlerts.filter((item) => item.type === "SPTPD" && item.level === "warning").length} SPTPD belum dilaporkan untuk masa ${mockConfig.currentPeriod}`, critical: false },
-    { message: `${mockAlerts.filter((item) => item.type === "STPD" && item.level === "critical").length} STPD outstanding perlu diselesaikan`, critical: true },
-    { message: `${mockAlerts.filter((item) => item.type === "MPOS" && item.level === "critical").length} MPOS terdeteksi offline`, critical: true },
-    { message: `${mockAlerts.filter((item) => item.type === "MPOS" && item.level === "warning").length} MPOS belum tersinkronisasi`, critical: false },
-    { message: `${mockAlerts.filter((item) => item.type === "REKONSILIASI").length} rekonsiliasi memerlukan peninjauan`, critical: false },
-  ];
+    { count: mockAlerts.filter((item) => item.type === "SPTPD" && item.level === "warning").length, message: `${mockAlerts.filter((item) => item.type === "SPTPD" && item.level === "warning").length} SPTPD belum dilaporkan untuk masa ${mockConfig.currentPeriod}`, critical: false },
+    { count: mockAlerts.filter((item) => item.type === "STPD" && item.level === "critical").length, message: `${mockAlerts.filter((item) => item.type === "STPD" && item.level === "critical").length} STPD outstanding perlu diselesaikan`, critical: true },
+    { count: mockAlerts.filter((item) => item.type === "MPOS" && item.level === "critical").length, message: `${mockAlerts.filter((item) => item.type === "MPOS" && item.level === "critical").length} MPOS terdeteksi offline`, critical: true },
+    { count: mockAlerts.filter((item) => item.type === "MPOS" && item.level === "warning").length, message: `${mockAlerts.filter((item) => item.type === "MPOS" && item.level === "warning").length} MPOS belum tersinkronisasi`, critical: false },
+    { count: mockAlerts.filter((item) => item.type === "REKONSILIASI").length, message: `${mockAlerts.filter((item) => item.type === "REKONSILIASI").length} rekonsiliasi memerlukan peninjauan`, critical: false },
+  ].filter((item) => item.count > 0);
 
   useEffect(() => {
     const updateUser = () => setUser(getStoredUserProfile());
@@ -35,6 +35,7 @@ export function DashboardHeader({ title, alert, onMenuOpen, onLogout }: Dashboar
   }, []);
 
   useEffect(() => {
+    if (!alertItems.length) return;
     const timer = window.setInterval(() => {
       setAlertIndex((index) => (index + 1) % alertItems.length);
     }, 2500);
@@ -48,9 +49,9 @@ export function DashboardHeader({ title, alert, onMenuOpen, onLogout }: Dashboar
       <button className="mobile-menu" onClick={onMenuOpen} aria-label="Buka menu"><Menu size={21} /></button>
       <div className="topbar-breadcrumb"><span>BAPENDA PBJT</span><b>/</b><strong>{title}</strong></div>
       <div className="topbar-actions">
-        <div className={`topbar-alert ${activeAlert.critical ? "is-critical" : ""}`} title={activeAlert.message} role="status" aria-live="polite"><AlertTriangle size={16} />{activeAlert.message}</div>
+        {alertItems.length > 0 && <div className={`topbar-alert ${activeAlert.critical ? "is-critical" : ""}`} title={activeAlert.message} role="status" aria-live="polite"><AlertTriangle size={16} />{activeAlert.message}</div>}
         <label className="topbar-search"><Search size={17} /><input aria-label="Cari wajib pajak" placeholder="Cari WP, NPWPD, invoice..." /></label>
-        <button className="icon-button" aria-label="Buka Alert Center" onClick={() => router.push("/dashboard#alerts")}><Bell size={19} /><span className="notification-count">{mockAlerts.length}</span></button>
+        <button className="icon-button" aria-label="Buka Alert Center" onClick={() => router.push("/dashboard#alerts")}><Bell size={19} />{mockAlerts.length > 0 && <span className="notification-count">{mockAlerts.length}</span>}</button>
         <div className="profile-menu">
           <button type="button" className="profile-chip profile-trigger" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}>
             <div className="profile-avatar">{user.avatar ? <img src={user.avatar} alt="" /> : initialsForName(user.name)}</div><div><strong>{user.name}</strong><span>{user.role}</span></div><ChevronDown size={16} />

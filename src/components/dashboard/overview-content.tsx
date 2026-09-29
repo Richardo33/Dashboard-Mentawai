@@ -17,7 +17,9 @@ export function OverviewContent() {
   const transactions = mockTransactions.filter((transaction) => taxpayerIds.has(transaction.taxpayerId) && new Date(transaction.date).getFullYear() === Number(year));
   const revenue = transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
   const estimate = Math.round(revenue * mockConfig.pbjtRate);
-  const reported = taxpayers.reduce((sum, taxpayer) => sum + getSptpdHistory(taxpayer.id, Number(year)).reduce((subtotal, record) => subtotal + record.reportedAmount, 0), 0);
+  const reported = taxpayers.reduce((sum, taxpayer) => sum + getSptpdHistory(taxpayer.id, Number(year)).reduce((subtotal, record) => subtotal + record.pbjtAmount, 0), 0);
+  const currentPeriodIndex = getSptpdHistory(taxpayers[0]?.id ?? "", Number(year)).find((record) => record.period === mockConfig.currentPeriod)?.monthIndex ?? 8;
+  const reportedCount = taxpayers.filter((taxpayer) => getSptpdHistory(taxpayer.id, Number(year)).some((record) => record.monthIndex === currentPeriodIndex && record.status === "Sudah Dilaporkan")).length;
   const restaurants = taxpayers.filter((taxpayer) => taxpayer.type === "Restoran").length;
   const hotels = taxpayers.filter((taxpayer) => taxpayer.type === "Hotel").length;
   const districts = getDistricts().map((item) => item.name);
@@ -28,7 +30,7 @@ export function OverviewContent() {
     { label: "ESTIMASI PBJT", value: formatRupiah(estimate), note: "Hasil perhitungan sistem", icon: Calculator, tone: "blue" },
     { label: "REALISASI PBJT", value: formatRupiah(reported), note: "Dari SPTPD dilaporkan", icon: WalletCards, tone: "green" },
     { label: "GAP SELISIH", value: formatRupiah(estimate - reported), note: "Estimasi - Realisasi", icon: FileWarning, tone: "amber" },
-    { label: "SPTPD", value: `${taxpayers.length ? ((reported > 0 ? 1 : 0) * 100).toFixed(1).replace(".", ",") : "0,0"}%`, note: `${reported > 0 ? 1 : 0}/${taxpayers.length} dilaporkan - ${Math.max(0, taxpayers.length - (reported > 0 ? 1 : 0))} belum`, icon: FileWarning, tone: "amber" },
+    { label: "SPTPD", value: `${taxpayers.length ? ((reportedCount / taxpayers.length) * 100).toFixed(1).replace(".", ",") : "0,0"}%`, note: `${reportedCount}/${taxpayers.length} dilaporkan - ${Math.max(0, taxpayers.length - reportedCount)} belum`, icon: FileWarning, tone: "amber" },
     { label: "STPD OUTSTANDING", value: formatRupiah(mockConfig.stpdOutstanding), note: `${mockAlerts.filter((item) => item.type === "STPD" && item.level === "critical").length} STPD belum selesai`, icon: FileWarning, tone: "red" },
   ];
 

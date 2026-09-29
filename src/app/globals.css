@@ -1618,12 +1618,23 @@ a {
 .sidebar-footer { justify-content: center; }.dashboard-sidebar.is-collapsed .sidebar-footer { flex-direction: row; }.dashboard-sidebar.is-collapsed .sidebar-collapse { width: 42px; flex-basis: 42px; }.dashboard-sidebar.is-collapsed .sidebar-group + .sidebar-group { margin-top: 10px; }.dashboard-sidebar.is-collapsed .dashboard-nav a { height: 44px; }
 .profile-menu { position: relative; }.profile-trigger { margin: 0; border: 0; cursor: pointer; }.profile-dropdown { position: absolute; z-index: 20; top: calc(100% + 9px); right: 0; width: 238px; overflow: hidden; border: 1px solid #e5eaf2; border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgb(18 42 75 / 14%); }.profile-dropdown-header { display: grid; gap: 4px; padding: 16px 15px 12px; border-bottom: 1px solid #edf0f5; }.profile-dropdown-header strong { color: #15304f; font-size: 14px; }.profile-dropdown-header span { color: #8997a9; font-size: 12px; }.profile-dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; height: 43px; padding: 0 15px; border: 0; background: #fff; color: #29415e; font-size: 14px; text-align: left; cursor: pointer; }.profile-dropdown button:hover { background: #f5f8fc; }.profile-dropdown button.danger { color: #dc3545; }
 .dashboard-sidebar.is-collapsed .dashboard-nav { display: flex; flex-direction: column; justify-content: space-between; gap: 0; overflow: hidden; }.dashboard-sidebar.is-collapsed .sidebar-group { display: contents; }.dashboard-sidebar.is-collapsed .sidebar-group + .sidebar-group { margin-top: 0; }.dashboard-sidebar.is-collapsed .dashboard-nav a { flex: 0 0 44px; }
+.dashboard-sidebar:not(.is-collapsed) .sidebar-collapse { width: 100%; flex: 1 1 auto; height: 44px; }
 html, body, * { scrollbar-width: none; }.dashboard-nav::-webkit-scrollbar, .dashboard-content::-webkit-scrollbar, *::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .topbar-breadcrumb { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 18px; }.topbar-breadcrumb span { color: #8b9bb0; }.topbar-breadcrumb b { color: #a8b4c4; font-weight: 400; }.topbar-breadcrumb strong { color: #152a48; font-weight: 500; }.topbar-alert { display: flex; align-items: center; gap: 9px; max-width: 330px; height: 38px; padding: 0 14px; overflow: hidden; border: 1px solid #f5df9d; border-radius: 12px; color: #bb6b16; background: #fffaf0; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }.topbar-alert span { font-size: 19px; }.topbar-search { display: flex; align-items: center; gap: 9px; width: 220px; height: 38px; padding: 0 12px; border: 1px solid #e0e7f0; border-radius: 12px; color: #8ea0b5; background: #fff; }.topbar-search input { width: 100%; min-width: 0; border: 0; outline: 0; color: #29415e; background: transparent; font-size: 13px; }.topbar-search input::placeholder { color: #8ea0b5; }.notification-count { position: absolute; top: -2px; right: -4px; display: grid; place-items: center; width: 17px; height: 17px; border: 2px solid #fff; border-radius: 50%; color: #fff; background: #ef476f; font-size: 9px; font-weight: 700; }.profile-trigger { gap: 9px; padding: 0; background: transparent; }.profile-trigger:hover { background: transparent; }.profile-trigger .profile-avatar { width: 36px; height: 36px; }.profile-trigger .profile-avatar { font-size: 12px; }
 @media (max-width: 900px) { .topbar-alert { max-width: 220px; }.topbar-search { width: 170px; }.topbar-breadcrumb { font-size: 16px; } }
 @media (max-width: 620px) { .topbar-breadcrumb { font-size: 15px; }.topbar-breadcrumb span, .topbar-breadcrumb b { display: none; }.topbar-alert { display: none; }.topbar-search { width: 36px; padding: 0; justify-content: center; border: 0; }.topbar-search input { display: none; }.notification-count { top: 0; right: -2px; }.profile-trigger > div:nth-child(2), .profile-trigger > svg { display: none; } }
 
 .topbar-alert.is-critical { border-color: #ffc6d0; color: #e33455; background: #fff1f3; }
+
+.taxpayer-chart-filters { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex: 0 0 auto; min-width: 0; }
+.taxpayer-chart-filters .year-select { min-width: 165px; justify-content: space-between; }
+.taxpayer-chart-filters .year-select select { appearance: none; -webkit-appearance: none; min-width: 58px; }
+.taxpayer-chart-filters .year-select span { display: none; }
+@media (max-width: 620px) {
+  .taxpayer-chart-filters { width: 100%; justify-content: stretch; gap: 8px; }
+  .taxpayer-chart-filters .year-select { min-width: 0; }
+}
+.compliance-status-badge.success { border-color: #9ae8ce; color: #00a879; background: #effcf7; }
 .dashboard-topbar { min-height: 70px; height: 70px; padding-top: 3px; padding-bottom: 3px; }
 .dashboard-sidebar { padding-top: 0; }.dashboard-brand { height: 70px; flex: 0 0 70px; padding-top: 0; padding-bottom: 0; border-bottom: 1px solid #e7ebf2; }
 .dashboard-sidebar { padding-top: 0; }.dashboard-brand { height: 55px; flex: 0 0 55px; padding-top: 0; padding-bottom: 0; }.dashboard-nav { padding-top: 16px; }.topbar-breadcrumb { font-size: 16px; }.topbar-alert, .topbar-search input { font-size: 12px; }.profile-chip strong { font-size: 12px; }.profile-chip span { font-size: 10px; }
@@ -3245,3 +3256,8 @@ body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSyst
 @media (max-width: 56.25rem) { .alert-list-copy { padding-right: 0; }.alert-list-copy small { position: static; display: block; margin-top: .25rem; transform: none; } }
 @media (max-width: 56.25rem) { .alert-filter-tabs { align-items: stretch; flex-direction: column; }.alert-search { flex-basis: auto; width: 100%; } }
 @media (max-width: 38.75rem) { .alert-filter-tabs { margin-bottom: 1rem; }.alert-list-row { align-items: flex-start; padding: .75rem 1rem; }.alert-list-copy > div { align-items: flex-start; flex-direction: column; gap: .375rem; }.alert-list-copy p { font-size: .875rem; }.alert-list-footer { align-items: flex-start; flex-direction: column; } }
+
+.reconciliation-status.is-success { border-color: #9ae8ce; color: #00a879; background: #effcf7; }
+.reconciliation-status.is-danger { border-color: #ffc7d0; color: #f0445f; background: #fff3f5; }
+
+.inactive-status { border-color: #ffc7d0; color: #f0445f; background: #fff3f5; }

@@ -6,13 +6,6 @@ import { useRouter } from "next/navigation";
 import { mockMposDevices, mockTaxpayers } from "@/lib/mock-data";
 import { FilterDropdown } from "@/components/dashboard/filter-dropdown";
 
-const metrics = [
-  { label: "TOTAL PERANGKAT", value: String(mockMposDevices.length), icon: Wifi, tone: "slate" },
-  { label: "ONLINE", value: String(mockMposDevices.filter((device) => device.status === "Online").length), icon: Wifi, tone: "green" },
-  { label: "SYNCING", value: String(mockMposDevices.filter((device) => device.status === "Syncing").length), icon: RefreshCw, tone: "amber" },
-  { label: "OFFLINE", value: String(mockMposDevices.filter((device) => device.status === "Offline").length), icon: WifiOff, tone: "red" },
-] as const;
-
 const deviceStatuses = ["Online", "Syncing", "Offline"] as const;
 
 export function MposContent() {
@@ -20,6 +13,12 @@ export function MposContent() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("Semua");
   const [page, setPage] = useState(1);
+  const metrics = [
+    { label: "TOTAL PERANGKAT", value: String(mockMposDevices.length), icon: Wifi, tone: "slate" },
+    { label: "ONLINE", value: String(mockMposDevices.filter((device) => device.status === "Online").length), icon: Wifi, tone: "green" },
+    { label: "SYNCING", value: String(mockMposDevices.filter((device) => device.status === "Syncing").length), icon: RefreshCw, tone: "amber" },
+    { label: "OFFLINE", value: String(mockMposDevices.filter((device) => device.status === "Offline").length), icon: WifiOff, tone: "red" },
+  ] as const;
   const rows = useMemo(() => mockMposDevices.map((device) => ({ device, taxpayer: mockTaxpayers.find((item) => item.id === device.taxpayerId)! })).filter(({ device, taxpayer }) => (status === "Semua" || device.status === status) && `${taxpayer.name} ${device.device} ${taxpayer.district}`.toLowerCase().includes(query.trim().toLowerCase())), [query, status]);
   const totalPages = Math.max(1, Math.ceil(rows.length / 10));
   const visibleRows = rows.slice((page - 1) * 10, page * 10);

@@ -18,7 +18,8 @@ import { ComplianceContent } from "@/components/dashboard/compliance-content";
 import { AlertCenterContent } from "@/components/dashboard/alert-center-content";
 import { MposContent } from "@/components/dashboard/mpos-content";
 import { AccountContent } from "@/components/dashboard/account-content";
-import { mockAlerts, mockConfig } from "@/lib/mock-data";
+import { clearDashboardData, mockAlerts, mockConfig, syncDashboardData } from "@/lib/mock-data";
+import { supabase } from "@/lib/supabase/client";
 
 const pageTitles: Record<string, string> = {
   "#overview": "Overview",
@@ -48,18 +49,32 @@ export default function DashboardPage() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeHref, setActiveHref] = useState<string | null>(null);
+  const [databaseReady, setDatabaseReady] = useState(false);
+  const [databaseError, setDatabaseError] = useState(false);
 
   useEffect(() => {
-    if (window.sessionStorage.getItem("mentawai-auth") !== "admin") router.replace("/");
+    if (!supabase) {
+      router.replace("/");
+      return;
+    }
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) router.replace("/");
+    });
     const updateActiveHref = () => setActiveHref(window.location.hash || "#overview");
     updateActiveHref();
     window.addEventListener("hashchange", updateActiveHref);
     return () => window.removeEventListener("hashchange", updateActiveHref);
   }, [router]);
 
+  useEffect(() => {
+    clearDashboardData();
+    syncDashboardData()
+      .then(() => setDatabaseReady(true))
+      .catch(() => setDatabaseError(true));
+  }, []);
+
   function logout() {
-    window.sessionStorage.removeItem("mentawai-auth");
-    router.replace("/");
+    void supabase?.auth.signOut().finally(() => router.replace("/"));
   }
 
   return (
@@ -67,7 +82,7 @@ export default function DashboardPage() {
       <Sidebar mobileOpen={menuOpen} onMobileClose={() => setMenuOpen(false)} activeHref={activeHref ?? ""} />
       <section className="dashboard-main">
         <DashboardHeader title={activeHref ? pageTitles[activeHref] ?? "Overview" : ""} alert={activeHref ? getPageAlert(activeHref) : ""} onMenuOpen={() => setMenuOpen(true)} onLogout={logout} />
-        {!activeHref ? <div className="dashboard-route-loading" aria-hidden="true" /> : activeHref === "#taxpayers" ? <TaxpayerContent /> : activeHref === "#transactions" ? <TransactionsContent /> : activeHref === "#activity" ? <ActivityContent /> : activeHref === "#estimation" ? <EstimationContent /> : activeHref === "#realization" ? <RealizationContent /> : activeHref === "#reconciliation" ? <ReconciliationContent /> : activeHref === "#gap" ? <GapContent /> : activeHref === "#sptpd" ? <SptpdContent /> : activeHref === "#stpd" ? <StpdContent /> : activeHref === "#compliance" ? <ComplianceContent /> : activeHref === "#alerts" ? <AlertCenterContent /> : activeHref === "#mpos" ? <MposContent /> : activeHref === "#profile" ? <AccountContent mode="profile" /> : activeHref === "#settings" ? <AccountContent mode="settings" /> : <OverviewContent />}
+        {!activeHref || !databaseReady ? <div className="dashboard-route-loading" aria-hidden={!databaseError} /> : activeHref === "#taxpayers" ? <TaxpayerContent /> : activeHref === "#transactions" ? <TransactionsContent /> : activeHref === "#activity" ? <ActivityContent /> : activeHref === "#estimation" ? <EstimationContent /> : activeHref === "#realization" ? <RealizationContent /> : activeHref === "#reconciliation" ? <ReconciliationContent /> : activeHref === "#gap" ? <GapContent /> : activeHref === "#sptpd" ? <SptpdContent /> : activeHref === "#stpd" ? <StpdContent /> : activeHref === "#compliance" ? <ComplianceContent /> : activeHref === "#alerts" ? <AlertCenterContent /> : activeHref === "#mpos" ? <MposContent /> : activeHref === "#profile" ? <AccountContent mode="profile" /> : activeHref === "#settings" ? <AccountContent mode="settings" /> : <OverviewContent />}
       </section>
     </main>
   );

@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase/client";
+
 export type BusinessType = "Restoran" | "Hotel";
 export type MposStatus = "online" | "syncing" | "offline";
 export type PaymentMethod = "QRIS" | "Kartu Debit" | "Tunai" | "Transfer Bank" | "Virtual Account";
@@ -10,6 +12,7 @@ export type Taxpayer = {
   type: BusinessType;
   district: string;
   districtCode: string;
+  nib?: string;
   village: string;
   active: boolean;
   mposStatus: MposStatus;
@@ -219,20 +222,117 @@ export const mockMposDevices: MposDevice[] = [
   { id: "device-010", taxpayerId: "wp-010", device: "MPOS-A1-106", lastSync: "13.40.00", transactionsToday: 20, status: "Online" },
 ];
 
-export const mockStpdSeeds = [
+export const mockStpdSeeds: Array<{ taxpayerId: string; monthIndex: number; status: string; paidRate: number }> = [
   { taxpayerId: "wp-001", monthIndex: 6, status: "Overdue", paidRate: 0 },
   { taxpayerId: "wp-003", monthIndex: 5, status: "Overdue", paidRate: 0 },
   { taxpayerId: "wp-009", monthIndex: 6, status: "Partial", paidRate: .4 },
   { taxpayerId: "wp-009", monthIndex: 7, status: "Outstanding", paidRate: 0 },
-] as const;
+];
 
-export const mockAnomalies = [
+export const mockAnomalies: Array<[string, string, string, string, string]> = [
   ["MPOS Offline", "wp-003", "Threshold: Online", "Deteksi: Offline > 24 jam", "Bahaya"],
   ["MPOS Offline", "wp-010", "Threshold: Online", "Deteksi: Offline > 48 jam", "Bahaya"],
   ["Selisih Pelaporan", "wp-001", "Threshold: Selisih < 5%", "Deteksi: Selisih 20%", "Waspada"],
   ["Nominal di Bawah Threshold", "wp-007", "Threshold: >= Rp 5.000", "Deteksi: 3 transaksi < Rp 5.000", "Waspada"],
   ["Void Berulang", "wp-008", "Threshold: < 2 void/hari", "Deteksi: 5 void/hari", "Waspada"],
-] as const;
+];
+
+function replaceCollection<T>(target: T[], rows: T[]) {
+  target.splice(0, target.length, ...rows);
+}
+
+export function clearDashboardData() {
+  replaceCollection(mockTaxpayers, []);
+  replaceCollection(mockTransactions, []);
+  replaceCollection(mockSptpd, []);
+  replaceCollection(mockAlerts, []);
+  replaceCollection(mockMposDevices, []);
+  replaceCollection(mockStpdSeeds, []);
+  replaceCollection(mockAnomalies, []);
+}
+
+export async function syncDashboardData() {
+  if (!supabase) throw new Error("Supabase environment variables are missing.");
+  const results = await Promise.all([
+    supabase.from("taxpayers").select("*").order("id"),
+    supabase.from("transactions").select("*").order("transaction_date", { ascending: false }),
+    supabase.from("sptpd_records").select("*").order("period_year", { ascending: false }).order("period_month", { ascending: false }),
+    supabase.from("mpos_devices").select("*").order("id"),
+    supabase.from("stpd_records").select("*").order("due_date"),
+    supabase.from("alerts").select("*").order("alert_time", { ascending: false }),
+  ]);
+  const failed = results.find((item) => item.error);
+  if (failed?.error) throw failed.error;
+  const [taxpayersResult, transactionsResult, sptpdResult, devicesResult, stpdResult, alertsResult] = results;
+
+  const taxpayers = (taxpayersResult.data ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    type: row.business_type,
+    district: row.district,
+    districtCode: row.district_code,
+    nib: row.nib ?? "",
+    village: row.village,
+    active: row.active,
+    mposStatus: row.mpos_status,
+    image: row.image_path ? "/assets/taxpayers/" + row.image_path : "/assets/taxpayers/mentawai-resort.webp",
+    address: row.address,
+    registeredDate: new Date(row.registered_date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
+    ownerName: row.owner_name,
+    ownerNpwp: row.owner_npwp,
+    ownerContact: row.owner_contact,
+    ownerEmail: row.owner_email,
+  } satisfies Taxpayer));
+  const transactions = (transactionsResult.data ?? []).map((row) => ({
+    id: row.id,
+    taxpayerId: row.taxpayer_id,
+    date: row.transaction_date,
+    time: row.transaction_time,
+    amount: Number(row.amount),
+    paymentMethod: row.payment_method,
+    status: row.status,
+  } satisfies Transaction));
+  const sptpd = (sptpdResult.data ?? []).filter((row) => row.period_year === mockConfig.currentYear && row.period_month === 9).map((row) => ({
+    id: row.id,
+    taxpayerId: row.taxpayer_id,
+    period: mockConfig.currentPeriod,
+    year: row.period_year,
+    reported: row.status === "Sudah Dilaporkan",
+    reportedAmount: Number(row.reported_amount),
+  } satisfies SptpdRecord));
+  const devices = (devicesResult.data ?? []).map((row) => ({
+    id: row.id,
+    taxpayerId: row.taxpayer_id,
+    device: row.device,
+    lastSync: row.last_sync,
+    transactionsToday: row.transactions_today,
+    status: row.status,
+  } satisfies MposDevice));
+  const stpd = (stpdResult.data ?? []).map((row) => ({
+    taxpayerId: row.taxpayer_id,
+    monthIndex: row.period_month - 1,
+    status: row.status,
+    paidRate: row.total ? Number(row.paid) / Number(row.total) : 0,
+  }));
+  const alerts = (alertsResult.data ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    taxpayerId: row.taxpayer_id,
+    type: row.type,
+    level: row.level,
+    detail: row.detail,
+    time: new Date(row.alert_time).toLocaleString("id-ID"),
+  } satisfies AlertRecord));
+
+  replaceCollection(mockTaxpayers, taxpayers);
+  replaceCollection(mockTransactions, transactions);
+  replaceCollection(mockSptpd, sptpd);
+  replaceCollection(mockMposDevices, devices);
+  replaceCollection(mockStpdSeeds, stpd);
+  replaceCollection(mockAlerts, alerts);
+  replaceCollection(mockAnomalies, []);
+  mockConfig.stpdOutstanding = (stpdResult.data ?? []).reduce((sum, row) => sum + Number(row.remaining), 0);
+}
 
 export function formatRupiah(value: number) {
   return `Rp ${value.toLocaleString("id-ID")}`;
@@ -245,7 +345,7 @@ export function getTaxpayer(taxpayerId: string) {
 export function getDashboardTotals() {
   const totalRevenue = mockTransactions.reduce((total, transaction) => total + transaction.amount, 0);
   const estimatedPbjt = Math.round(totalRevenue * mockConfig.pbjtRate);
-  const reportedPbjt = mockSptpd.reduce((total, record) => total + record.reportedAmount, 0);
+  const reportedPbjt = mockSptpd.reduce((total, record) => total + Math.round(record.reportedAmount * mockConfig.pbjtRate), 0);
   return {
     totalTaxpayers: mockTaxpayers.length,
     activeTaxpayers: mockTaxpayers.filter((taxpayer) => taxpayer.active).length,

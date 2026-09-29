@@ -12,7 +12,7 @@ import {
   Shield,
 } from "lucide-react";
 import { nameFromEmail } from "@/lib/user-profile";
-import { mockConfig } from "@/lib/mock-data";
+import { supabase } from "@/lib/supabase/client";
 
 function IllustrationPlaceholder() {
   return (
@@ -108,16 +108,25 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
-  function handleLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!email.trim() || password !== mockConfig.demoPassword) {
+    if (!email.trim() || !password) {
       setError("Email atau password belum sesuai.");
       return;
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    window.sessionStorage.setItem("mentawai-auth", "admin");
-    window.sessionStorage.setItem("mentawai-user", JSON.stringify({ email: normalizedEmail, name: nameFromEmail(normalizedEmail), role: "Administrator", avatar: "" }));
+    if (!supabase) {
+      setError("Konfigurasi Supabase belum tersedia.");
+      return;
+    }
+    const { data, error: loginError } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+    if (loginError || !data.user) {
+      setError("Email atau password belum sesuai.");
+      return;
+    }
+    const name = data.user.user_metadata?.name || nameFromEmail(normalizedEmail);
+    window.sessionStorage.setItem("mentawai-user", JSON.stringify({ email: normalizedEmail, name, role: "Administrator", avatar: "" }));
     router.push("/dashboard");
   }
 
