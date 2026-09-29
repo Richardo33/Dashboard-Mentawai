@@ -672,6 +672,8 @@ a {
   color: #8291a5;
   font-size: 11px;
 }
+.dashboard-brand-icon { background: transparent; }
+.dashboard-brand-icon img { width: 42px; height: 42px; object-fit: contain; }
 .sidebar-close {
   display: none;
 }
@@ -1879,6 +1881,32 @@ body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSyst
 .sptpd-print-form { max-width: 900px; margin: 0 auto; padding: 42px 48px; border: 1px solid #222; background: #fff; }
 .sptpd-print-form > header { padding-bottom: 22px; border-bottom: 2px solid #111; text-align: center; }.sptpd-print-form > header strong, .sptpd-print-form > header span, .sptpd-print-form > header small { display: block; }.sptpd-print-form > header strong { font-size: 18px; }.sptpd-print-form > header span { margin-top: 3px; font-size: 14px; }.sptpd-print-form > header small { margin-top: 16px; font-size: 13px; }.sptpd-print-form h1 { margin: 4px 0 0; font-size: 25px; letter-spacing: 2px; }.sptpd-print-form h2 { margin: 4px 0 15px; font-size: 16px; }.sptpd-print-form > header p { margin: 0; font-size: 14px; }.sptpd-print-section { margin-top: 25px; }.sptpd-print-section h3 { margin: 0; padding: 9px 10px; border: 1px solid #222; background: #f0f0f0; font-size: 14px; }.sptpd-print-section dl { margin: 0; border: 1px solid #222; border-top: 0; }.sptpd-print-section dl div { display: grid; grid-template-columns: 220px 1fr; min-height: 34px; border-top: 1px solid #bbb; }.sptpd-print-section dl div:first-child { border-top: 0; }.sptpd-print-section dt, .sptpd-print-section dd { margin: 0; padding: 8px 10px; font-size: 13px; }.sptpd-print-section dt { border-right: 1px solid #bbb; font-weight: 600; }.sptpd-print-section table { width: 100%; border-collapse: collapse; border: 1px solid #222; border-top: 0; }.sptpd-print-section td { padding: 9px 10px; border-top: 1px solid #bbb; font-size: 13px; }.sptpd-print-section td:last-child { width: 230px; border-left: 1px solid #bbb; text-align: right; }.sptpd-print-section .print-total td { font-weight: 700; }.sptpd-print-signature { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; margin-top: 58px; font-size: 13px; text-align: center; }
 @media print { @page { size: A4; margin: 12mm; } body { background: #fff !important; }.sptpd-print-page { min-height: auto; padding: 0; background: #fff; }.sptpd-print-form { max-width: none; padding: 0; border: 0; } }
+
+.sptpd-official-header { display: flex; align-items: center; gap: 16px; padding-bottom: 12px; border-bottom: 3px double #111; text-align: center; }
+.sptpd-official-header img { width: 82px; height: auto; flex: 0 0 82px; }
+.sptpd-official-header > div { flex: 1; }
+.sptpd-official-header strong { font-size: 17px; }
+.sptpd-official-header span { margin-top: 2px; font-size: 13px; }
+.sptpd-official-header small { margin-top: 9px; font-size: 12px; }
+.sptpd-official-header h1 { margin: 2px 0 0; font-size: 22px; letter-spacing: 2px; }
+.sptpd-official-header h2 { margin: 3px 0 8px; font-size: 14px; }
+.sptpd-official-header p { margin: 0; font-size: 12px; }
+.sptpd-template-number { display: grid; grid-template-columns: 130px 1fr 130px; gap: 8px; padding: 7px 0; border-bottom: 1px solid #222; font-size: 11px; }
+.sptpd-template-number b { text-align: center; }
+.sptpd-template-number span:last-child { text-align: right; }
+.sptpd-template-table { table-layout: fixed; }
+.sptpd-template-table th { padding: 7px 5px; border: 1px solid #222; background: #f1f1f1; font-size: 10px; text-align: center; }
+.sptpd-template-table td { padding: 7px 5px; border: 1px solid #222; font-size: 11px; }
+.sptpd-template-table th:nth-child(1) { width: 31%; }
+.sptpd-template-table th:nth-child(2) { width: 17%; }
+.sptpd-template-table th:nth-child(3) { width: 21%; }
+.sptpd-template-table th:nth-child(4) { width: 11%; }
+.sptpd-template-table th:nth-child(5) { width: 20%; }
+.sptpd-template-table td:not(:first-child) { text-align: right; }
+.sptpd-declaration { margin: 0; padding: 10px; border: 1px solid #222; font-size: 11px; line-height: 1.5; }
+.sptpd-calculation-section p { margin: 0; padding: 7px 10px; border: 1px solid #222; border-top: 0; font-size: 11px; }
+.sptpd-print-footer { margin-top: 18px; border-top: 1px solid #222; padding-top: 6px; font-size: 9px; text-align: right; }
+@media print { .sptpd-print-form { font-size: 11px; } .sptpd-print-section { margin-top: 14px; } .sptpd-print-section h3 { padding: 6px 8px; font-size: 11px; } .sptpd-print-section dl div { min-height: 25px; grid-template-columns: 190px 1fr; } .sptpd-print-section dt, .sptpd-print-section dd { padding: 5px 7px; font-size: 10px; } .sptpd-print-signature { margin-top: 34px; font-size: 10px; } }
 .transactions-content { padding: 24px 22px 26px; }
 .transactions-page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; height: 78px; min-height: 78px; }
 .transactions-page-heading h1 { margin: 0; color: #09254a; font-size: 30px; font-weight: 700; letter-spacing: -.7px; }
