@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Bell, ChevronDown, LogOut, Menu, Search, Settings, UserRound } from "lucide-react";
 import { mockAlerts, mockConfig } from "@/lib/mock-data";
-import { defaultUserProfile, getStoredUserProfile, initialsForName, type UserProfile } from "@/lib/user-profile";
+import { supabase } from "@/lib/supabase/client";
+import { defaultUserProfile, initialsForName, nameFromEmail, type UserProfile } from "@/lib/user-profile";
 
 type DashboardHeaderProps = {
   title: string;
@@ -28,10 +29,49 @@ export function DashboardHeader({ title, alert, onMenuOpen, onLogout }: Dashboar
   ].filter((item) => item.count > 0);
 
   useEffect(() => {
-    const updateUser = () => setUser(getStoredUserProfile());
-    updateUser();
-    window.addEventListener("mentawai-user-updated", updateUser);
-    return () => window.removeEventListener("mentawai-user-updated", updateUser);
+    let mounted = true;
+
+    const setAuthenticatedUser = async (authUser: NonNullable<Awaited<ReturnType<NonNullable<typeof supabase>["auth"]["getUser"]>>["data"]["user"]>) => {
+      if (!authUser.email || !mounted) return;
+      const email = authUser.email.toLowerCase();
+      const metadata = authUser.user_metadata ?? {};
+      const { data: databaseProfile } = await supabase!.from("profiles").select("name, role, avatar_path").eq("id", authUser.id).maybeSingle();
+      if (!mounted) return;
+      const profile: UserProfile = {
+        email,
+        name: databaseProfile?.name || metadata.full_name || metadata.name || nameFromEmail(email),
+        role: "Administrator",
+        avatar: databaseProfile?.avatar_path ?? metadata.avatar_url ?? metadata.picture ?? "",
+      };
+      setUser(profile);
+    };
+
+    const updateUser = async () => {
+      if (!supabase) {
+        if (mounted) setUser(defaultUserProfile);
+        return;
+      }
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        setAuthenticatedUser(data.user);
+      } else if (mounted) {
+        setUser(defaultUserProfile);
+      }
+    };
+
+    void updateUser();
+    const authListener = supabase?.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) void setAuthenticatedUser(session.user);
+      else if (mounted) setUser(defaultUserProfile);
+    });
+    const storedProfileListener = () => void updateUser();
+    window.addEventListener("mentawai-user-updated", storedProfileListener);
+
+    return () => {
+      mounted = false;
+      authListener?.data.subscription.unsubscribe();
+      window.removeEventListener("mentawai-user-updated", storedProfileListener);
+    };
   }, []);
 
   useEffect(() => {

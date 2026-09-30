@@ -52,7 +52,7 @@ a {
   background: #fff;
 }
 .welcome-content {
-  max-width: 730px;
+  max-width: 800px;
   margin: 82px auto 0;
 }
 .welcome-copy {
@@ -85,6 +85,15 @@ a {
   bottom: 22px;
   height: 1px;
   background: #899cb4;
+}
+.image-illustration {
+  display: block;
+  height: 480px;
+  max-width: 800px;
+  margin-bottom: 30px;
+}
+.image-illustration img {
+  object-fit: contain;
 }
 .window {
   position: absolute;
@@ -672,8 +681,11 @@ a {
   color: #8291a5;
   font-size: 11px;
 }
-.dashboard-brand-icon { background: transparent; }
+.dashboard-brand { background: #fff; }
+.dashboard-brand-icon { background: #fff !important; }
 .dashboard-brand-icon img { width: 42px; height: 42px; object-fit: contain; }
+.google-button img { width: 18px; height: 18px; }
+.google-button:disabled { cursor: wait; opacity: .7; }
 .sidebar-close {
   display: none;
 }
@@ -3289,3 +3301,21 @@ body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSyst
 .reconciliation-status.is-danger { border-color: #ffc7d0; color: #f0445f; background: #fff3f5; }
 
 .inactive-status { border-color: #ffc7d0; color: #f0445f; background: #fff3f5; }
+
+.database-sync-warning {
+  margin: 12px 28px 0;
+  padding: 10px 14px;
+  border: 1px solid #f1d08b;
+  border-radius: 8px;
+  color: #91631a;
+  background: #fff8e7;
+  font-size: 13px;
+}
+
+@media (min-width: 768px) {
+  .image-illustration {
+    height: 460px;
+    margin-bottom: -55px;
+    transform: none;
+  }
+}

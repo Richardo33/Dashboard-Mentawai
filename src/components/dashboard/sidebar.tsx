@@ -58,7 +58,7 @@ export function Sidebar({ mobileOpen, onMobileClose, activeHref }: SidebarProps)
   return (
     <aside className={cn("dashboard-sidebar", mobileOpen && "is-open", collapsed && "is-collapsed")}>
       <div className="dashboard-brand">
-        <div className="dashboard-brand-icon"><Image src="/assets/Kabupaten-Kepulauan-Mentawai-Logo.webp" alt="Logo Kabupaten Kepulauan Mentawai" width={42} height={42} priority /></div>
+        <div className="dashboard-brand-icon"><Image src="/assets/branding/kabupaten-kepulauan-mentawai.png" alt="Logo Kabupaten Kepulauan Mentawai" width={42} height={42} priority /></div>
         <div className="sidebar-brand-copy"><strong>BAPENDA PBJT</strong><span>Kab. Kep. Mentawai</span></div>
         <button className="sidebar-close" onClick={onMobileClose} aria-label="Tutup menu"><X size={20} /></button>
       </div>

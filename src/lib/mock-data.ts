@@ -155,6 +155,13 @@ export const mockSptpd: SptpdRecord[] = mockTaxpayers.map((taxpayer) => ({
   reportedAmount: 0,
 }));
 
+export function getAvailableYears() {
+  const years = new Set<number>([new Date().getFullYear()]);
+  mockTransactions.forEach((transaction) => years.add(new Date(transaction.date).getFullYear()));
+  mockSptpd.forEach((record) => years.add(record.year));
+  return Array.from(years).sort((a, b) => b - a).map(String);
+}
+
 export const monthLabels = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 export const monthLabelsLong = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 

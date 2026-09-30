@@ -18,7 +18,7 @@ import { ComplianceContent } from "@/components/dashboard/compliance-content";
 import { AlertCenterContent } from "@/components/dashboard/alert-center-content";
 import { MposContent } from "@/components/dashboard/mpos-content";
 import { AccountContent } from "@/components/dashboard/account-content";
-import { clearDashboardData, mockAlerts, mockConfig, syncDashboardData } from "@/lib/mock-data";
+import { mockAlerts, mockConfig, syncDashboardData } from "@/lib/mock-data";
 import { supabase } from "@/lib/supabase/client";
 
 const pageTitles: Record<string, string> = {
@@ -67,10 +67,12 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
-    clearDashboardData();
     syncDashboardData()
       .then(() => setDatabaseReady(true))
-      .catch(() => setDatabaseError(true));
+      .catch(() => {
+        setDatabaseError(true);
+        setDatabaseReady(true);
+      });
   }, []);
 
   function logout() {
@@ -82,6 +84,7 @@ export default function DashboardPage() {
       <Sidebar mobileOpen={menuOpen} onMobileClose={() => setMenuOpen(false)} activeHref={activeHref ?? ""} />
       <section className="dashboard-main">
         <DashboardHeader title={activeHref ? pageTitles[activeHref] ?? "Overview" : ""} alert={activeHref ? getPageAlert(activeHref) : ""} onMenuOpen={() => setMenuOpen(true)} onLogout={logout} />
+        {databaseError && <div className="database-sync-warning" role="status">Koneksi database sedang bermasalah. Data terakhir yang tersedia sedang ditampilkan.</div>}
         {!activeHref || !databaseReady ? <div className="dashboard-route-loading" aria-hidden={!databaseError} /> : activeHref === "#taxpayers" ? <TaxpayerContent /> : activeHref === "#transactions" ? <TransactionsContent /> : activeHref === "#activity" ? <ActivityContent /> : activeHref === "#estimation" ? <EstimationContent /> : activeHref === "#realization" ? <RealizationContent /> : activeHref === "#reconciliation" ? <ReconciliationContent /> : activeHref === "#gap" ? <GapContent /> : activeHref === "#sptpd" ? <SptpdContent /> : activeHref === "#stpd" ? <StpdContent /> : activeHref === "#compliance" ? <ComplianceContent /> : activeHref === "#alerts" ? <AlertCenterContent /> : activeHref === "#mpos" ? <MposContent /> : activeHref === "#profile" ? <AccountContent mode="profile" /> : activeHref === "#settings" ? <AccountContent mode="settings" /> : <OverviewContent />}
       </section>
     </main>

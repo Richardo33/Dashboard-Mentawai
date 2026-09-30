@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -9,9 +10,7 @@ import {
   EyeOff,
   LockKeyhole,
   Mail,
-  Shield,
 } from "lucide-react";
-import { nameFromEmail } from "@/lib/user-profile";
 import { supabase } from "@/lib/supabase/client";
 
 function IllustrationPlaceholder() {
@@ -101,12 +100,37 @@ function IllustrationPlaceholder() {
   );
 }
 
+function LoginIllustration() {
+  return <div className="illustration image-illustration"><Image src="/assets/branding/image-login.svg" alt="Ilustrasi sistem monitoring PBJT" fill priority sizes="680px" /></div>;
+}
+
 export default function Home() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  async function handleGoogleLogin() {
+    if (!supabase) {
+      setError("Konfigurasi Supabase belum tersedia.");
+      return;
+    }
+    setGoogleLoading(true);
+    setError("");
+    const { error: googleError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+        queryParams: { prompt: "select_account" },
+      },
+    });
+    if (googleError) {
+      setGoogleLoading(false);
+      setError("Login dengan Google gagal. Coba lagi.");
+    }
+  }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -125,8 +149,6 @@ export default function Home() {
       setError("Email atau password belum sesuai.");
       return;
     }
-    const name = data.user.user_metadata?.name || nameFromEmail(normalizedEmail);
-    window.sessionStorage.setItem("mentawai-user", JSON.stringify({ email: normalizedEmail, name, role: "Administrator", avatar: "" }));
     router.push("/dashboard");
   }
 
@@ -137,10 +159,10 @@ export default function Home() {
           className="brand-mark"
           aria-label="Logo Kabupaten Kepulauan Mentawai"
         >
-          <Shield size={42} strokeWidth={1.5} />
+          <Image src="/assets/branding/kabupaten-kepulauan-mentawai.png" alt="Logo Kabupaten Kepulauan Mentawai" width={58} height={58} priority />
         </div>
         <div className="welcome-content">
-          <IllustrationPlaceholder />
+          <LoginIllustration />
           <div className="welcome-copy ">
             <h1 className="text-[24px]! font-bold">
               Sistem Monitoring PBJT Terpadu
@@ -160,8 +182,8 @@ export default function Home() {
             <p>Log in to your account</p>
           </header>
           <form className="login-card" onSubmit={handleLogin}>
-            <button type="button" className="google-button">
-              <span className="google-g">G</span>Continue with Google
+            <button type="button" className="google-button" onClick={() => void handleGoogleLogin()} disabled={googleLoading}>
+              <Image src="/assets/google-g.svg" alt="" width={18} height={18} />{googleLoading ? "Connecting..." : "Continue with Google"}
             </button>
             <div className="or-divider">
               <span>OR</span>

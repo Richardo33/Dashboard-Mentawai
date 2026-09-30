@@ -22,16 +22,6 @@ export function nameFromEmail(email: string) {
     .join(" ");
 }
 
-export function getStoredUserProfile(): UserProfile {
-  if (typeof window === "undefined") return defaultUserProfile;
-  try {
-    const stored = window.sessionStorage.getItem("mentawai-user");
-    return stored ? { ...defaultUserProfile, ...JSON.parse(stored) } : defaultUserProfile;
-  } catch {
-    return defaultUserProfile;
-  }
-}
-
 export function initialsForName(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "AD";
 }
