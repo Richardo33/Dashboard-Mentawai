@@ -68,7 +68,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     syncDashboardData()
-      .then(() => setDatabaseReady(true))
+      .then(() => {
+        setDatabaseError(false);
+        setDatabaseReady(true);
+      })
       .catch(() => {
         setDatabaseError(true);
         setDatabaseReady(true);

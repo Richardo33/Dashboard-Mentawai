@@ -42,6 +42,8 @@ export type MposDevice = {
   lastSync: string;
   transactionsToday: number;
   status: "Online" | "Syncing" | "Offline";
+  offlineSince?: string;
+  heartbeatDisabled?: boolean;
 };
 
 export type Transaction = {
@@ -52,6 +54,10 @@ export type Transaction = {
   amount: number;
   paymentMethod: PaymentMethod;
   status: "Paid" | "Pending";
+  isOffline?: boolean;
+  voided?: boolean;
+  voidApproved?: boolean;
+  voidAt?: string;
 };
 
 export type SptpdRecord = {
@@ -78,6 +84,7 @@ export type SptpdPeriodRecord = {
 export const mockConfig = {
   currentYear: 2026,
   currentPeriod: "September",
+  lowSeasonMonths: [] as number[],
   pbjtRate: 0.1,
   stpdOutstanding: 13574400,
   lastUpdated: "23 September 2026, 13:42 WIB",
@@ -219,12 +226,12 @@ export const mockAlerts: AlertRecord[] = [
 export const mockMposDevices: MposDevice[] = [
   { id: "device-001", taxpayerId: "wp-001", device: "MPOS-A1-101", lastSync: "13.30.00", transactionsToday: 12, status: "Online" },
   { id: "device-002", taxpayerId: "wp-002", device: "MPOS-A1-102", lastSync: "13.28.00", transactionsToday: 8, status: "Online" },
-  { id: "device-003", taxpayerId: "wp-003", device: "MPOS-B2-201", lastSync: "08.12.00", transactionsToday: 0, status: "Offline" },
+  { id: "device-003", taxpayerId: "wp-003", device: "MPOS-B2-201", lastSync: "08.12.00", transactionsToday: 0, status: "Offline", offlineSince: "2026-09-26T08:12:00+07:00" },
   { id: "device-004", taxpayerId: "wp-004", device: "MPOS-C3-301", lastSync: "13.35.00", transactionsToday: 15, status: "Online" },
   { id: "device-005", taxpayerId: "wp-005", device: "MPOS-D4-401", lastSync: "11.50.00", transactionsToday: 6, status: "Syncing" },
   { id: "device-006", taxpayerId: "wp-006", device: "MPOS-A1-103", lastSync: "13.32.00", transactionsToday: 22, status: "Online" },
   { id: "device-007", taxpayerId: "wp-007", device: "MPOS-A1-104", lastSync: "13.20.00", transactionsToday: 18, status: "Online" },
-  { id: "device-008", taxpayerId: "wp-008", device: "MPOS-B2-202", lastSync: "14.00.00", transactionsToday: 0, status: "Offline" },
+  { id: "device-008", taxpayerId: "wp-008", device: "MPOS-B2-202", lastSync: "14.00.00", transactionsToday: 0, status: "Offline", offlineSince: "2026-09-27T14:00:00+07:00" },
   { id: "device-009", taxpayerId: "wp-009", device: "MPOS-A1-105", lastSync: "13.10.00", transactionsToday: 14, status: "Online" },
   { id: "device-010", taxpayerId: "wp-010", device: "MPOS-A1-106", lastSync: "13.40.00", transactionsToday: 20, status: "Online" },
 ];
@@ -236,13 +243,77 @@ export const mockStpdSeeds: Array<{ taxpayerId: string; monthIndex: number; stat
   { taxpayerId: "wp-009", monthIndex: 7, status: "Outstanding", paidRate: 0 },
 ];
 
-export const mockAnomalies: Array<[string, string, string, string, string]> = [
-  ["MPOS Offline", "wp-003", "Threshold: Online", "Deteksi: Offline > 24 jam", "Bahaya"],
-  ["MPOS Offline", "wp-010", "Threshold: Online", "Deteksi: Offline > 48 jam", "Bahaya"],
-  ["Selisih Pelaporan", "wp-001", "Threshold: Selisih < 5%", "Deteksi: Selisih 20%", "Waspada"],
-  ["Nominal di Bawah Threshold", "wp-007", "Threshold: >= Rp 5.000", "Deteksi: 3 transaksi < Rp 5.000", "Waspada"],
-  ["Void Berulang", "wp-008", "Threshold: < 2 void/hari", "Deteksi: 5 void/hari", "Waspada"],
-];
+export type FraudAnomaly = [string, string, string, string, "Waspada" | "Bahaya"];
+
+function hoursSince(value?: string) {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? Math.max(0, (Date.now() - timestamp) / 3_600_000) : 0;
+}
+
+/** Evaluates the anti-fraud rules used by the Overview red-flag panel. */
+export function getFraudAnomalies(): FraudAnomaly[] {
+  const anomalies: FraudAnomaly[] = [];
+
+  const microTransactions = new Map<string, number>();
+  mockTransactions.forEach((transaction) => {
+    if (transaction.amount < 5_000) {
+      microTransactions.set(transaction.taxpayerId, (microTransactions.get(transaction.taxpayerId) ?? 0) + 1);
+    }
+    if (transaction.isOffline && transaction.amount > 25_000_000) {
+      anomalies.push(["Nominal Transaksi Ekstrem", transaction.taxpayerId, "Batas: transaksi offline ≤ Rp 25.000.000", `Deteksi: ${formatRupiah(transaction.amount)} offline`, "Bahaya"]);
+    }
+  });
+  microTransactions.forEach((count, taxpayerId) => {
+    anomalies.push(["Nominal Transaksi Ekstrem", taxpayerId, "Batas: nilai mikro ≥ Rp 5.000", `Deteksi: ${count} transaksi < Rp 5.000`, "Waspada"]);
+  });
+
+  mockMposDevices.forEach((device) => {
+    if (device.status !== "Offline") return;
+    const offlineHours = hoursSince(device.offlineSince);
+    if (device.heartbeatDisabled || offlineHours > 72) {
+      anomalies.push(["Anomali Sinyal Jaringan & Device", device.taxpayerId, "Batas: offline ≤ 72 jam", device.heartbeatDisabled ? "Deteksi: heartbeat sengaja dimatikan" : `Deteksi: offline ${Math.floor(offlineHours)} jam`, "Bahaya"]);
+    } else if (offlineHours > 24) {
+      anomalies.push(["Anomali Sinyal Jaringan & Device", device.taxpayerId, "Batas: offline ≤ 24 jam", `Deteksi: offline ${Math.floor(offlineHours)} jam`, "Waspada"]);
+    }
+  });
+
+  const currentMonth = mockConfig.currentPeriod === "September" ? 8 : monthLabelsLong.indexOf(mockConfig.currentPeriod);
+  const currentYear = mockConfig.currentYear;
+  mockTaxpayers.forEach((taxpayer) => {
+    const monthlyTotals = Array.from({ length: 12 }, (_, month) => mockTransactions.filter((transaction) => {
+      const date = new Date(transaction.date);
+      return transaction.taxpayerId === taxpayer.id && date.getFullYear() === currentYear && date.getMonth() === month;
+    }).reduce((sum, transaction) => sum + transaction.amount, 0));
+    const historical = monthlyTotals.filter((total, month) => month < currentMonth && total > 0);
+    const average = historical.length ? historical.reduce((sum, total) => sum + total, 0) / historical.length : 0;
+    const current = monthlyTotals[currentMonth] ?? 0;
+    if (average > 0 && !mockConfig.lowSeasonMonths.includes(currentMonth) && current < average * 0.4) {
+      anomalies.push(["Fluktuasi Omzet Musiman", taxpayer.id, "Batas: omzet tidak turun > 60%", `Deteksi: turun ${Math.round((1 - current / average) * 100)}% dari rerata historis`, "Waspada"]);
+    }
+  });
+
+  const voided = mockTransactions.filter((transaction) => transaction.voided);
+  const voidsByTaxpayer = new Map<string, Transaction[]>();
+  voided.forEach((transaction) => {
+    const records = voidsByTaxpayer.get(transaction.taxpayerId) ?? [];
+    records.push(transaction);
+    voidsByTaxpayer.set(transaction.taxpayerId, records);
+    if (transaction.voidApproved === false) {
+      anomalies.push(["Penyimpangan Otorisasi Void / SoD", transaction.taxpayerId, "Batas: setiap void wajib approval manager", "Deteksi: percobaan void tanpa approval manager", "Bahaya"]);
+    }
+  });
+  voidsByTaxpayer.forEach((records, taxpayerId) => {
+    const recent = records.filter((transaction) => transaction.voidAt && hoursSince(transaction.voidAt) <= 1);
+    if (recent.length > 3) {
+      anomalies.push(["Penyimpangan Otorisasi Void / SoD", taxpayerId, "Batas: maksimal 3 void dalam 1 jam", `Deteksi: ${recent.length} void dalam 1 jam`, "Bahaya"]);
+    }
+  });
+
+  return anomalies;
+}
+
+export const mockAnomalies: FraudAnomaly[] = getFraudAnomalies();
 
 function replaceCollection<T>(target: T[], rows: T[]) {
   target.splice(0, target.length, ...rows);
@@ -298,6 +369,10 @@ export async function syncDashboardData() {
     amount: Number(row.amount),
     paymentMethod: row.payment_method,
     status: row.status,
+    isOffline: row.is_offline ?? row.connection_mode === "offline",
+    voided: row.voided ?? row.status === "Voided",
+    voidApproved: row.void_approved,
+    voidAt: row.void_at,
   } satisfies Transaction));
   const sptpd = (sptpdResult.data ?? []).filter((row) => row.period_year === mockConfig.currentYear && row.period_month === 9).map((row) => ({
     id: row.id,
@@ -314,6 +389,8 @@ export async function syncDashboardData() {
     lastSync: row.last_sync,
     transactionsToday: row.transactions_today,
     status: row.status,
+    offlineSince: row.offline_since ?? (row.status === "Offline" ? row.updated_at : undefined),
+    heartbeatDisabled: row.heartbeat_disabled,
   } satisfies MposDevice));
   const stpd = (stpdResult.data ?? []).map((row) => ({
     taxpayerId: row.taxpayer_id,
@@ -337,7 +414,7 @@ export async function syncDashboardData() {
   replaceCollection(mockMposDevices, devices);
   replaceCollection(mockStpdSeeds, stpd);
   replaceCollection(mockAlerts, alerts);
-  replaceCollection(mockAnomalies, []);
+  replaceCollection(mockAnomalies, getFraudAnomalies());
   mockConfig.stpdOutstanding = (stpdResult.data ?? []).reduce((sum, row) => sum + Number(row.remaining), 0);
 }
 

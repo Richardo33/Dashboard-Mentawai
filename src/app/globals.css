@@ -661,6 +661,7 @@ a {
   padding: 0 12px 29px;
 }
 .dashboard-brand-icon {
+  position: relative;
   display: grid;
   place-items: center;
   width: 38px;
@@ -683,7 +684,7 @@ a {
 }
 .dashboard-brand { background: #fff; }
 .dashboard-brand-icon { background: #fff !important; }
-.dashboard-brand-icon img { width: 42px; height: 42px; object-fit: contain; }
+.dashboard-brand-icon img { object-fit: contain; }
 .google-button img { width: 18px; height: 18px; }
 .google-button:disabled { cursor: wait; opacity: .7; }
 .sidebar-close {
