@@ -6,17 +6,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:sptpd": "node --experimental-strip-types scripts/verify-sptpd-template.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
+    "@sparticuz/chromium": "^153.0.0",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "apexcharts": "^7.6.1",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
-    "jspdf": "^4.2.1",
     "lucide-react": "^1.48.0",
     "next": "16.3.6",
+    "playwright-core": "^1.63.0",
     "react": "19.2.8",
     "react-apexcharts": "^2.1.1",
     "react-dom": "19.2.8",

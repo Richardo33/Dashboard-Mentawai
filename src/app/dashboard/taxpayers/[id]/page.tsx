@@ -1,19 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TaxpayerDetail } from "@/components/dashboard/taxpayer-content";
 import { mockTaxpayers } from "@/lib/mock-data";
+import { supabase } from "@/lib/supabase/client";
 
 export default function TaxpayerDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const [menuOpen, setMenuOpen] = useState(false);
   const taxpayer = mockTaxpayers.find((item) => item.id === params.id);
-  useEffect(() => { if (window.sessionStorage.getItem("mentawai-auth") !== "admin") router.replace("/"); }, [router]);
-  const logout = () => { window.sessionStorage.removeItem("mentawai-auth"); router.replace("/"); };
+  const logout = () => { void supabase?.auth.signOut().finally(() => router.replace("/")); };
   function returnToPreviousPage() {
     const returnPath = window.sessionStorage.getItem("taxpayer-detail-return") ?? "/dashboard#taxpayers";
     window.sessionStorage.removeItem("taxpayer-detail-return");

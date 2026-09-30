@@ -16,10 +16,13 @@ CLI tidak wajib. Untuk menjalankan semuanya dari Chrome:
 1. Buka project Supabase `Dashboard-Mentawai`.
 2. Masuk ke **SQL Editor** lalu buat query baru.
 3. Buka file `supabase/migrations/202609290001_initial_schema.sql`, salin seluruh isinya, lalu jalankan.
-4. Buat query baru lagi, buka file `supabase/seed.sql`, salin seluruh isinya, lalu jalankan.
-5. Cek hasilnya di **Table Editor**, **Storage**, dan **Authentication > Users**.
+4. Buat query baru lagi, jalankan `supabase/migrations/202609300001_add_fraud_detection_fields.sql`.
+5. Buat query baru lagi, jalankan `supabase/migrations/202609300002_harden_rls_by_role.sql`.
+6. Buat query baru lagi, jalankan `supabase/migrations/202609300003_harden_profile_avatar_storage.sql`.
+7. Buat query baru lagi, buka file `supabase/seed.sql`, salin seluruh isinya, lalu jalankan.
+8. Cek hasilnya di **Table Editor**, **Storage**, dan **Authentication > Users**.
 
-Jalankan migration terlebih dahulu, baru seed. Migration membuat tabel, RLS, Auth trigger, dan bucket. Seed mengisi data dummy serta akun admin.
+Jalankan migration terlebih dahulu, baru seed. Migration awal membuat tabel, RLS, Auth trigger, dan bucket. Migration fraud menambahkan field operasional untuk deteksi anomaly. Migration role memperketat akses Viewer/Operator/Administrator. Migration avatar membatasi ukuran dan tipe file avatar di Storage. Seed mengisi data dummy serta akun admin.
 
 ## Apply with Supabase CLI (opsional)
 
@@ -48,11 +51,7 @@ CLI belum terpasang di komputer ini, tetapi tidak dibutuhkan untuk workflow SQL 
 
 ## Auth login
 
-The seed intentionally does not insert directly into `auth.users`, because Supabase Auth users should be created through the Dashboard or Auth Admin API. After running the seed, open **Authentication > Users > Add user**, then create:
-
-- Email: `admin@gmail.com`
-- Password: `Mentawai123!`
-- Confirm email: enabled for development
+The seed intentionally does not insert directly into `auth.users`, because Supabase Auth users should be created through the Dashboard or Auth Admin API. Create an administrator account using a secure, unique credential managed outside this repository, then set its `profiles.role` to `Administrator`. Enable email confirmation according to your deployment policy.
 
 The `on_auth_user_created` trigger will create the matching row in `public.profiles` automatically.
 

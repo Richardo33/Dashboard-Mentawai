@@ -6,6 +6,7 @@ import { AlertTriangle, Bell, ChevronDown, LogOut, Menu, Search, Settings, UserR
 import { mockAlerts, mockConfig } from "@/lib/mock-data";
 import { supabase } from "@/lib/supabase/client";
 import { defaultUserProfile, initialsForName, nameFromEmail, type UserProfile } from "@/lib/user-profile";
+import { resolveProfileAvatar } from "@/lib/profile-avatar";
 
 type DashboardHeaderProps = {
   title: string;
@@ -41,7 +42,7 @@ export function DashboardHeader({ title, alert, onMenuOpen, onLogout }: Dashboar
         email,
         name: databaseProfile?.name || metadata.full_name || metadata.name || nameFromEmail(email),
         role: "Administrator",
-        avatar: databaseProfile?.avatar_path ?? metadata.avatar_url ?? metadata.picture ?? "",
+        avatar: await resolveProfileAvatar(databaseProfile?.avatar_path ?? metadata.avatar_url ?? metadata.picture ?? ""),
       };
       setUser(profile);
     };

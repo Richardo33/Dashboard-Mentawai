@@ -6,7 +6,7 @@ export type UserProfile = {
 };
 
 export const defaultUserProfile: UserProfile = {
-  email: mockConfig.demoEmail,
+  email: "",
   name: "Admin",
   role: "Administrator",
   avatar: "",

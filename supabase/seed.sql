@@ -20,19 +20,19 @@ values
   ('wp-010', 'Siberut Restaurant', 'Restoran', 'Siberut Barat Daya', '13.09.06', '1208900100010', 'Katurei', false, 'offline', 'siberut-restaurant.webp', 'Jl. Raya Katurei', '2024-04-25', 'Pak Beni', '10.123.456.0-010.000', '081234500010', 'beni@gmail.com')
 on conflict (id) do update set name = excluded.name, business_type = excluded.business_type, district = excluded.district, nib = excluded.nib, mpos_status = excluded.mpos_status, image_path = excluded.image_path, updated_at = now();
 
-insert into public.mpos_devices (id, taxpayer_id, device, last_sync, transactions_today, status)
+insert into public.mpos_devices (id, taxpayer_id, device, last_sync, transactions_today, status, offline_since)
 values
-  ('device-001', 'wp-001', 'MPOS-A1-101', '13.30.00', 12, 'Online'),
-  ('device-002', 'wp-002', 'MPOS-A1-102', '13.28.00', 8, 'Online'),
-  ('device-003', 'wp-003', 'MPOS-B2-201', '08.12.00', 0, 'Offline'),
-  ('device-004', 'wp-004', 'MPOS-C3-301', '13.35.00', 15, 'Online'),
-  ('device-005', 'wp-005', 'MPOS-D4-401', '11.50.00', 6, 'Syncing'),
-  ('device-006', 'wp-006', 'MPOS-A1-103', '13.32.00', 22, 'Online'),
-  ('device-007', 'wp-007', 'MPOS-A1-104', '13.20.00', 18, 'Online'),
-  ('device-008', 'wp-008', 'MPOS-B2-202', '14.00.00', 0, 'Offline'),
-  ('device-009', 'wp-009', 'MPOS-A1-105', '13.10.00', 14, 'Online'),
-  ('device-010', 'wp-010', 'MPOS-A1-106', '13.40.00', 20, 'Online')
-on conflict (id) do update set status = excluded.status, last_sync = excluded.last_sync, transactions_today = excluded.transactions_today, updated_at = now();
+  ('device-001', 'wp-001', 'MPOS-A1-101', '13.30.00', 12, 'Online', null),
+  ('device-002', 'wp-002', 'MPOS-A1-102', '13.28.00', 8, 'Online', null),
+  ('device-003', 'wp-003', 'MPOS-B2-201', '08.12.00', 0, 'Offline', now() - interval '96 hours'),
+  ('device-004', 'wp-004', 'MPOS-C3-301', '13.35.00', 15, 'Online', null),
+  ('device-005', 'wp-005', 'MPOS-D4-401', '11.50.00', 6, 'Syncing', null),
+  ('device-006', 'wp-006', 'MPOS-A1-103', '13.32.00', 22, 'Online', null),
+  ('device-007', 'wp-007', 'MPOS-A1-104', '13.20.00', 18, 'Online', null),
+  ('device-008', 'wp-008', 'MPOS-B2-202', '14.00.00', 0, 'Offline', now() - interval '80 hours'),
+  ('device-009', 'wp-009', 'MPOS-A1-105', '13.10.00', 14, 'Online', null),
+  ('device-010', 'wp-010', 'MPOS-A1-106', '13.40.00', 20, 'Online', null)
+on conflict (id) do update set status = excluded.status, last_sync = excluded.last_sync, transactions_today = excluded.transactions_today, offline_since = excluded.offline_since, updated_at = now();
 
 -- Deterministic transaction generator: 8 transactions per taxpayer per month.
 insert into public.transactions (id, taxpayer_id, transaction_date, transaction_time, amount, payment_method, status)
@@ -49,6 +49,32 @@ cross join (values (2025, 12), (2026, 9)) years(year, month_count)
 cross join lateral generate_series(1, years.month_count) months(month_index)
 cross join lateral generate_series(0, 7) sequences(sequence_number)
 on conflict (id) do nothing;
+
+-- Demo anomaly fixtures. Remove or replace these rows before importing real production data.
+insert into public.transactions
+  (id, taxpayer_id, transaction_date, transaction_time, amount, payment_method, status, connection_mode, is_offline, voided, void_approved, void_at)
+values
+  ('INV-FRAUD-MICRO-001', 'wp-007', current_date, '09.01', 3500, 'Tunai', 'Paid', 'online', false, false, null, null),
+  ('INV-FRAUD-OFFLINE-001', 'wp-003', current_date, '09.15', 30000000, 'Tunai', 'Paid', 'offline', true, false, null, null),
+  ('INV-FRAUD-VOID-001', 'wp-008', current_date, '10.01', 150000, 'Tunai', 'Paid', 'online', false, true, true, now() - interval '10 minutes'),
+  ('INV-FRAUD-VOID-002', 'wp-008', current_date, '10.16', 175000, 'Tunai', 'Paid', 'online', false, true, true, now() - interval '20 minutes'),
+  ('INV-FRAUD-VOID-003', 'wp-008', current_date, '10.31', 125000, 'Tunai', 'Paid', 'online', false, true, true, now() - interval '30 minutes'),
+  ('INV-FRAUD-VOID-004', 'wp-008', current_date, '10.46', 200000, 'Tunai', 'Paid', 'online', false, true, false, now() - interval '40 minutes')
+on conflict (id) do update set
+  amount = excluded.amount,
+  connection_mode = excluded.connection_mode,
+  is_offline = excluded.is_offline,
+  voided = excluded.voided,
+  void_approved = excluded.void_approved,
+  void_at = excluded.void_at;
+
+-- Force one current-period taxpayer below 40% of its historical monthly average.
+update public.transactions
+set amount = 100000
+where taxpayer_id = 'wp-006'
+  and transaction_date >= make_date(2026, 9, 1)
+  and transaction_date < make_date(2026, 10, 1)
+  and id not like 'INV-FRAUD-%';
 
 insert into public.sptpd_records (id, taxpayer_id, period_month, period_year, mpos_amount, reported_amount, pbjt_amount, status)
 select

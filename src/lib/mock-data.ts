@@ -88,8 +88,6 @@ export const mockConfig = {
   pbjtRate: 0.1,
   stpdOutstanding: 13574400,
   lastUpdated: "23 September 2026, 13:42 WIB",
-  demoEmail: "admin@gmail.com",
-  demoPassword: "Mentawai123!",
 };
 
 export const mockTaxpayers: Taxpayer[] = [
@@ -128,6 +126,16 @@ const seedTransactions: Transaction[] = [
   { id: "INV-2026-00188", taxpayerId: "wp-009", date: "2026-03-18", time: "09.30", amount: 59595000, paymentMethod: "QRIS", status: "Paid" },
 ];
 
+// Demo fixtures that exercise each anti-fraud rule in local fallback mode.
+const fraudFixtureTransactions: Transaction[] = [
+  { id: "INV-FRAUD-MICRO-001", taxpayerId: "wp-007", date: "2026-09-30", time: "09.01", amount: 3500, paymentMethod: "Tunai", status: "Paid" },
+  { id: "INV-FRAUD-OFFLINE-001", taxpayerId: "wp-003", date: "2026-09-30", time: "09.15", amount: 30000000, paymentMethod: "Tunai", status: "Paid", isOffline: true },
+  { id: "INV-FRAUD-VOID-001", taxpayerId: "wp-008", date: "2026-09-30", time: "10.01", amount: 150000, paymentMethod: "Tunai", status: "Paid", voided: true, voidApproved: true, voidAt: new Date(Date.now() - 10 * 60_000).toISOString() },
+  { id: "INV-FRAUD-VOID-002", taxpayerId: "wp-008", date: "2026-09-30", time: "10.16", amount: 175000, paymentMethod: "Tunai", status: "Paid", voided: true, voidApproved: true, voidAt: new Date(Date.now() - 20 * 60_000).toISOString() },
+  { id: "INV-FRAUD-VOID-003", taxpayerId: "wp-008", date: "2026-09-30", time: "10.31", amount: 125000, paymentMethod: "Tunai", status: "Paid", voided: true, voidApproved: true, voidAt: new Date(Date.now() - 30 * 60_000).toISOString() },
+  { id: "INV-FRAUD-VOID-004", taxpayerId: "wp-008", date: "2026-09-30", time: "10.46", amount: 200000, paymentMethod: "Tunai", status: "Paid", voided: true, voidApproved: false, voidAt: new Date(Date.now() - 40 * 60_000).toISOString() },
+];
+
 const generatedTransactions: Transaction[] = [2025, 2026].flatMap((year) => {
   const monthCount = year === mockConfig.currentYear ? 9 : 12;
   return mockTaxpayers.flatMap((taxpayer, taxpayerIndex) => Array.from({ length: monthCount * 8 }, (_, transactionIndex) => {
@@ -139,19 +147,20 @@ const generatedTransactions: Transaction[] = [2025, 2026].flatMap((year) => {
     const hour = 8 + ((sequence * 2 + taxpayerIndex) % 11);
     const minute = (sequence * 7 + taxpayerIndex * 3) % 60;
     const invoiceNumber = String(taxpayerIndex * 1000 + month * 8 + sequence + 2000).padStart(6, "0");
+    const isSeasonalDemoDrop = year === mockConfig.currentYear && taxpayer.id === "wp-006" && month === 8;
     return {
       id: `INV-${year}-${invoiceNumber}`,
       taxpayerId: taxpayer.id,
       date: `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
       time: `${String(hour).padStart(2, "0")}.${String(minute).padStart(2, "0")}`,
-      amount: baseAmount + variation,
+      amount: isSeasonalDemoDrop ? 100000 : baseAmount + variation,
       paymentMethod: ["QRIS", "Kartu Debit", "Tunai", "Transfer Bank", "Virtual Account"][sequence % 5] as PaymentMethod,
       status: sequence === 7 && month % 3 === 0 ? "Pending" : "Paid",
     };
   }));
 });
 
-export const mockTransactions: Transaction[] = [...seedTransactions, ...generatedTransactions];
+export const mockTransactions: Transaction[] = [...seedTransactions, ...fraudFixtureTransactions, ...generatedTransactions];
 
 export const mockSptpd: SptpdRecord[] = mockTaxpayers.map((taxpayer) => ({
   id: `sptpd-${taxpayer.id}`,
@@ -251,6 +260,10 @@ function hoursSince(value?: string) {
   return Number.isFinite(timestamp) ? Math.max(0, (Date.now() - timestamp) / 3_600_000) : 0;
 }
 
+export function getOfflineHours(device: MposDevice) {
+  return hoursSince(device.offlineSince);
+}
+
 /** Evaluates the anti-fraud rules used by the Overview red-flag panel. */
 export function getFraudAnomalies(): FraudAnomaly[] {
   const anomalies: FraudAnomaly[] = [];
@@ -270,7 +283,7 @@ export function getFraudAnomalies(): FraudAnomaly[] {
 
   mockMposDevices.forEach((device) => {
     if (device.status !== "Offline") return;
-    const offlineHours = hoursSince(device.offlineSince);
+    const offlineHours = getOfflineHours(device);
     if (device.heartbeatDisabled || offlineHours > 72) {
       anomalies.push(["Anomali Sinyal Jaringan & Device", device.taxpayerId, "Batas: offline ≤ 72 jam", device.heartbeatDisabled ? "Deteksi: heartbeat sengaja dimatikan" : `Deteksi: offline ${Math.floor(offlineHours)} jam`, "Bahaya"]);
     } else if (offlineHours > 24) {
@@ -332,6 +345,7 @@ export function clearDashboardData() {
 export async function syncDashboardData() {
   if (!supabase) throw new Error("Supabase environment variables are missing.");
   const results = await Promise.all([
+    supabase.from("dashboard_config").select("key, value"),
     supabase.from("taxpayers").select("*").order("id"),
     supabase.from("transactions").select("*").order("transaction_date", { ascending: false }),
     supabase.from("sptpd_records").select("*").order("period_year", { ascending: false }).order("period_month", { ascending: false }),
@@ -341,7 +355,11 @@ export async function syncDashboardData() {
   ]);
   const failed = results.find((item) => item.error);
   if (failed?.error) throw failed.error;
-  const [taxpayersResult, transactionsResult, sptpdResult, devicesResult, stpdResult, alertsResult] = results;
+  const [configResult, taxpayersResult, transactionsResult, sptpdResult, devicesResult, stpdResult, alertsResult] = results;
+  const lowSeasonConfig = configResult.data?.find((row) => row.key === "fraud_low_season_months")?.value;
+  if (Array.isArray(lowSeasonConfig)) {
+    mockConfig.lowSeasonMonths = lowSeasonConfig.map(Number).filter((month) => month >= 0 && month <= 11);
+  }
 
   const taxpayers = (taxpayersResult.data ?? []).map((row) => ({
     id: row.id,

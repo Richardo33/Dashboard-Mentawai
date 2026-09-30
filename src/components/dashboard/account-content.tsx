@@ -7,6 +7,7 @@ import "sweetalert2/dist/sweetalert2.min.css";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { defaultUserProfile, initialsForName, type UserProfile } from "@/lib/user-profile";
 import { supabase } from "@/lib/supabase/client";
+import { avatarExtension, hasValidImageSignature, isStoredAvatarPath, resolveProfileAvatar } from "@/lib/profile-avatar";
 
 type AccountContentProps = { mode: "profile" | "settings" };
 
@@ -14,6 +15,8 @@ export function AccountContent({ mode }: AccountContentProps) {
   const [profile, setProfile] = useState<UserProfile>(defaultUserProfile);
   const [name, setName] = useState(defaultUserProfile.name);
   const [avatar, setAvatar] = useState("");
+  const [avatarPath, setAvatarPath] = useState("");
+  const [pendingAvatar, setPendingAvatar] = useState<File | null>(null);
   const [saved, setSaved] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const dirtyRef = useRef(false);
@@ -24,6 +27,7 @@ export function AccountContent({ mode }: AccountContentProps) {
         setProfile(defaultUserProfile);
         setName(defaultUserProfile.name);
         setAvatar(defaultUserProfile.avatar);
+        setAvatarPath("");
         return;
       }
 
@@ -39,12 +43,13 @@ export function AccountContent({ mode }: AccountContentProps) {
             email: authUser.email.toLowerCase(),
             name: databaseProfile?.name || metadata.full_name || metadata.name || defaultUserProfile.name,
             role: databaseProfile?.role === "Operator" || databaseProfile?.role === "Viewer" ? databaseProfile.role : "Administrator",
-            avatar: databaseProfile?.avatar_path ?? metadata.avatar_url ?? metadata.picture ?? "",
+            avatar: await resolveProfileAvatar(databaseProfile?.avatar_path ?? metadata.avatar_url ?? metadata.picture ?? ""),
           }
         : defaultUserProfile;
       setProfile(current);
       setName(current.name);
       setAvatar(current.avatar);
+      setAvatarPath(databaseProfile?.avatar_path ?? "");
       setNotifications(databaseProfile?.notifications_enabled ?? true);
     };
     void loadProfile();
@@ -84,16 +89,41 @@ export function AccountContent({ mode }: AccountContentProps) {
     }
     const { data: authData } = await supabase.auth.getUser();
     const authUser = authData.user;
-    const { error: profileError } = authUser
-      ? await supabase.from("profiles").update({ name: updated.name, avatar_path: updated.avatar || null }).eq("id", authUser.id).select("id").single()
-      : { error: new Error("Sesi login tidak ditemukan") };
-    if (profileError || !authUser) {
+    if (!authUser) {
+      void Swal.fire({ title: "Profil belum tersimpan", text: "Sesi login tidak ditemukan.", icon: "error", confirmButtonText: "Tutup" });
+      return;
+    }
+    let nextAvatarPath = avatarPath;
+    let uploadedPath = "";
+    if (pendingAvatar) {
+      uploadedPath = `${authUser.id}/${crypto.randomUUID()}.${avatarExtension(pendingAvatar.type)}`;
+      const { error: uploadError } = await supabase.storage.from("profile-avatars").upload(uploadedPath, pendingAvatar, {
+        cacheControl: "3600",
+        contentType: pendingAvatar.type,
+        upsert: false,
+      });
+      if (uploadError) {
+        void Swal.fire({ title: "Foto belum tersimpan", text: "Upload foto profil gagal. Coba lagi.", icon: "error", confirmButtonText: "Tutup" });
+        return;
+      }
+      nextAvatarPath = uploadedPath;
+    }
+    const { error: profileError } = await supabase.from("profiles").update({ name: updated.name, avatar_path: nextAvatarPath || null }).eq("id", authUser.id).select("id").single();
+    if (profileError) {
+      if (uploadedPath) await supabase.storage.from("profile-avatars").remove([uploadedPath]);
       void Swal.fire({ title: "Profil belum tersimpan", text: "Perubahan profil gagal disimpan ke database.", icon: "error", confirmButtonText: "Tutup" });
       return;
     }
 
-    await supabase.auth.updateUser({ data: { full_name: updated.name, name: updated.name, avatar_url: updated.avatar } });
-    setProfile(updated);
+    if (avatarPath && isStoredAvatarPath(avatarPath) && avatarPath !== nextAvatarPath) {
+      await supabase.storage.from("profile-avatars").remove([avatarPath]);
+    }
+    const nextAvatar = await resolveProfileAvatar(nextAvatarPath);
+    await supabase.auth.updateUser({ data: { full_name: updated.name, name: updated.name } });
+    setAvatarPath(nextAvatarPath);
+    setAvatar(nextAvatar);
+    setPendingAvatar(null);
+    setProfile({ ...updated, avatar: nextAvatar });
     dirtyRef.current = false;
     window.dispatchEvent(new CustomEvent("mentawai-user-updated"));
     setSaved(true);
@@ -101,18 +131,18 @@ export function AccountContent({ mode }: AccountContentProps) {
     void Swal.fire({ title: "Profil tersimpan", text: "Perubahan profil berhasil disimpan.", icon: "success", confirmButtonText: "Tutup" });
   }
 
-  function changeAvatar(event: ChangeEvent<HTMLInputElement>) {
+  async function changeAvatar(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-    if (!allowedTypes.includes(file.type)) {
-      void Swal.fire({ title: "Format tidak didukung", text: "Gunakan gambar JPG, PNG, WEBP, atau GIF.", icon: "error", confirmButtonText: "Tutup" });
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type) || file.size > 2 * 1024 * 1024 || !(await hasValidImageSignature(file))) {
+      void Swal.fire({ title: "Foto tidak valid", text: "Gunakan JPG, PNG, atau WEBP dengan ukuran maksimal 2 MB.", icon: "error", confirmButtonText: "Tutup" });
       event.target.value = "";
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => { setAvatar(typeof reader.result === "string" ? reader.result : ""); dirtyRef.current = true; };
-    reader.readAsDataURL(file);
+    setPendingAvatar(file);
+    setAvatar(URL.createObjectURL(file));
+    dirtyRef.current = true;
   }
 
   async function toggleNotifications() {
