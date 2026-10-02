@@ -16,6 +16,15 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/taxpayer-images/**",
+      },
+    ],
+  },
   async headers() {
     return [
       {

@@ -41,7 +41,7 @@ export function DashboardHeader({ title, alert, onMenuOpen, onLogout }: Dashboar
       const profile: UserProfile = {
         email,
         name: databaseProfile?.name || metadata.full_name || metadata.name || nameFromEmail(email),
-        role: "Administrator",
+        role: databaseProfile?.role === "Operator" || databaseProfile?.role === "Viewer" ? databaseProfile.role : "Administrator",
         avatar: await resolveProfileAvatar(databaseProfile?.avatar_path ?? metadata.avatar_url ?? metadata.picture ?? ""),
       };
       setUser(profile);

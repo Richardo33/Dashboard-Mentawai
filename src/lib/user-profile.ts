@@ -1,7 +1,7 @@
 export type UserProfile = {
   email: string;
   name: string;
-  role: "Administrator";
+  role: "Administrator" | "Operator" | "Viewer";
   avatar: string;
 };
 

@@ -342,6 +342,17 @@ export function clearDashboardData() {
   replaceCollection(mockAnomalies, []);
 }
 
+type PublicStorageBucket = {
+  getPublicUrl: (path: string) => { data: { publicUrl: string } };
+};
+
+function resolveTaxpayerImage(imagePath: string | null | undefined, bucket: PublicStorageBucket) {
+  if (!imagePath) return "/assets/taxpayers/mentawai-resort.webp";
+  if (imagePath.startsWith("http")) return imagePath;
+  if (!imagePath.includes("/")) return `/assets/taxpayers/${imagePath}`;
+  return bucket.getPublicUrl(imagePath).data.publicUrl;
+}
+
 export async function syncDashboardData() {
   if (!supabase) throw new Error("Supabase environment variables are missing.");
   const results = await Promise.all([
@@ -356,6 +367,7 @@ export async function syncDashboardData() {
   const failed = results.find((item) => item.error);
   if (failed?.error) throw failed.error;
   const [configResult, taxpayersResult, transactionsResult, sptpdResult, devicesResult, stpdResult, alertsResult] = results;
+  const taxpayerImageBucket = supabase.storage.from("taxpayer-images");
   const lowSeasonConfig = configResult.data?.find((row) => row.key === "fraud_low_season_months")?.value;
   if (Array.isArray(lowSeasonConfig)) {
     mockConfig.lowSeasonMonths = lowSeasonConfig.map(Number).filter((month) => month >= 0 && month <= 11);
@@ -371,7 +383,7 @@ export async function syncDashboardData() {
     village: row.village,
     active: row.active,
     mposStatus: row.mpos_status,
-    image: row.image_path ? "/assets/taxpayers/" + row.image_path : "/assets/taxpayers/mentawai-resort.webp",
+    image: resolveTaxpayerImage(row.image_path, taxpayerImageBucket),
     address: row.address,
     registeredDate: new Date(row.registered_date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
     ownerName: row.owner_name,

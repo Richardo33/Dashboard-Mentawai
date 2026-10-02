@@ -1,13 +1,124 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import type { ApexOptions } from "apexcharts";
-import { AlertTriangle, ArrowLeft, Banknote, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FileText, Hash, Inbox, Info, Landmark, Mail, MapPin, Percent, Plus, QrCode, Search, Store, TrendingUp, UsersRound, Wifi } from "lucide-react";
-import { formatRupiah, getAvailableYears, getDashboardTotals, getDistricts, getSptpdHistory, getTaxpayer, monthLabels, monthLabelsLong, mockConfig, mockSptpd, mockTaxpayers, mockTransactions } from "@/lib/mock-data";
+import { AlertTriangle, ArrowLeft, Banknote, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FileText, Hash, Image as ImageIcon, Inbox, Info, Landmark, Mail, MapPin, Percent, Plus, QrCode, Search, Store, TrendingUp, Upload, UsersRound, Wifi, X } from "lucide-react";
+import { formatRupiah, getAvailableYears, getDashboardTotals, getDistricts, getSptpdHistory, getTaxpayer, monthLabels, monthLabelsLong, mockConfig, mockSptpd, mockTaxpayers, mockTransactions, type BusinessType, type MposStatus, syncDashboardData } from "@/lib/mock-data";
 import { FilterDropdown } from "@/components/dashboard/filter-dropdown";
+import { supabase } from "@/lib/supabase/client";
+import { hasValidImageSignature } from "@/lib/profile-avatar";
+
+type NewTaxpayerForm = {
+  name: string;
+  nib: string;
+  type: BusinessType;
+  district: string;
+  village: string;
+  address: string;
+  active: "Aktif" | "Nonaktif";
+  mposStatus: MposStatus;
+  ownerName: string;
+  ownerContact: string;
+  ownerNpwp: string;
+  ownerEmail: string;
+};
+
+const initialTaxpayerForm: NewTaxpayerForm = {
+  name: "",
+  nib: "",
+  type: "Restoran",
+  district: "",
+  village: "",
+  address: "",
+  active: "Aktif",
+  mposStatus: "offline",
+  ownerName: "",
+  ownerContact: "",
+  ownerNpwp: "",
+  ownerEmail: "",
+};
+
+function AddTaxpayerDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const districts = getDistricts();
+  const [form, setForm] = useState<NewTaxpayerForm>({ ...initialTaxpayerForm, district: districts[0]?.name ?? "", village: districts[0]?.villages[0] ?? "" });
+  const generatedId = useId();
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [preview, setPreview] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const selectedDistrict = districts.find((item) => item.name === form.district);
+  const update = <K extends keyof NewTaxpayerForm>(key: K, value: NewTaxpayerForm[K]) => setForm((current) => ({ ...current, [key]: value }));
+  const handleDistrictChange = (value: string) => {
+    const nextDistrict = districts.find((item) => item.name === value);
+    setForm((current) => ({ ...current, district: value, village: nextDistrict?.villages[0] ?? "" }));
+  };
+  const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
+      setError("Foto harus berupa gambar dengan ukuran maksimal 5 MB.");
+      return;
+    }
+    void hasValidImageSignature(file).then((valid) => {
+      if (!valid) {
+        setError("Format foto tidak valid.");
+        return;
+      }
+      setError("");
+      setPhoto(file);
+      setPreview(URL.createObjectURL(file));
+    });
+  };
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!supabase) {
+      setError("Koneksi database belum tersedia.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    const id = `wp-${generatedId.replace(/[^a-zA-Z0-9]/g, "")}`;
+    let imagePath: string | null = null;
+    try {
+      if (photo) {
+        imagePath = `${id}/${photo.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+        const { error: uploadError } = await supabase.storage.from("taxpayer-images").upload(imagePath, photo, { contentType: photo.type, upsert: false });
+        if (uploadError) throw uploadError;
+      }
+      const { error: insertError } = await supabase.from("taxpayers").insert({
+        id,
+        name: form.name.trim(),
+        business_type: form.type,
+        district: form.district,
+        district_code: selectedDistrict?.code ?? "",
+        nib: form.nib.trim() || null,
+        village: form.village,
+        active: form.active === "Aktif",
+        mpos_status: form.mposStatus,
+        image_path: imagePath,
+        address: form.address.trim(),
+        registered_date: new Date().toISOString().slice(0, 10),
+        owner_name: form.ownerName.trim(),
+        owner_npwp: form.ownerNpwp.trim(),
+        owner_contact: form.ownerContact.trim(),
+        owner_email: form.ownerEmail.trim(),
+      });
+      if (insertError) throw insertError;
+      onSaved();
+    } catch (saveError) {
+      if (imagePath) await supabase.storage.from("taxpayer-images").remove([imagePath]);
+      setError(saveError instanceof Error ? saveError.message : "Wajib pajak gagal disimpan.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return <div className="taxpayer-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}><section className="taxpayer-dialog" role="dialog" aria-modal="true" aria-labelledby="add-taxpayer-title"><header><h2 id="add-taxpayer-title">Tambah Wajib Pajak</h2><button type="button" className="dialog-close" aria-label="Tutup dialog" onClick={onClose} disabled={saving}><X size={22} /></button></header><form onSubmit={handleSubmit}><div className="taxpayer-dialog-body"><section className="taxpayer-form-section"><h3>DATA USAHA</h3><div className="taxpayer-photo-field"><label>Foto Usaha</label><div className="taxpayer-photo-row"><div className="taxpayer-photo-preview">{preview ? <img src={preview} alt="Pratinjau foto usaha" /> : <ImageIcon size={25} />}</div><label className="upload-photo-button"><Upload size={16} />Unggah Foto<input type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoChange} /></label></div></div><div className="taxpayer-form-grid"><label>Nama Usaha *<input required value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="Nama wajib pajak" /></label><label>NPWPD<input value={`Otomatis jika kosong`} readOnly aria-label="NPWPD otomatis" /></label><label>NIB<input value={form.nib} onChange={(event) => update("nib", event.target.value)} placeholder="Nomor Induk Berusaha" /></label><label>Jenis Usaha<select value={form.type} onChange={(event) => update("type", event.target.value as BusinessType)}><option value="Restoran">Restoran</option><option value="Hotel">Hotel</option></select></label><label>Kecamatan<select required value={form.district} onChange={(event) => handleDistrictChange(event.target.value)}>{districts.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></label><label>Desa ({selectedDistrict?.villages.length ?? 0})<select required value={form.village} onChange={(event) => update("village", event.target.value)}>{selectedDistrict?.villages.map((village) => <option key={village} value={village}>{village}</option>)}</select></label><label>Alamat<input required value={form.address} onChange={(event) => update("address", event.target.value)} placeholder="Alamat lengkap" /></label><label>Status Usaha<select value={form.active} onChange={(event) => update("active", event.target.value as NewTaxpayerForm["active"])}><option value="Aktif">Aktif</option><option value="Nonaktif">Nonaktif</option></select></label><label>Status MPOS<select value={form.mposStatus} onChange={(event) => update("mposStatus", event.target.value as MposStatus)}><option value="offline">Offline</option><option value="online">Online</option><option value="syncing">Syncing</option></select></label></div></section><section className="taxpayer-form-section"><h3>DATA PEMILIK</h3><div className="taxpayer-form-grid"><label>Nama Pemilik<input required value={form.ownerName} onChange={(event) => update("ownerName", event.target.value)} placeholder="Nama pemilik" /></label><label>Kontak<input required value={form.ownerContact} onChange={(event) => update("ownerContact", event.target.value)} placeholder="No. telepon" /></label><label>NPWP<input required value={form.ownerNpwp} onChange={(event) => update("ownerNpwp", event.target.value)} placeholder="01.234.567.0-000.000" /></label><label>Email<input required type="email" value={form.ownerEmail} onChange={(event) => update("ownerEmail", event.target.value)} placeholder="email@contoh.com" /></label></div></section>{error && <p className="taxpayer-form-error" role="alert">{error}</p>}</div><footer><button type="button" className="dialog-cancel" onClick={onClose} disabled={saving}>Batal</button><button type="submit" className="dialog-submit" disabled={saving}>{saving ? "Menyimpan..." : "Simpan"}</button></footer></form></section></div>;
+}
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -114,16 +225,18 @@ export function TaxpayerContent() {
   const [year, setYear] = useState(String(mockConfig.currentYear));
   const [page, setPage] = useState(1);
   const [selectedTaxpayerId, setSelectedTaxpayerId] = useState<string | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [, setDataVersion] = useState(0);
   const totals = getDashboardTotals();
   const districts = getDistricts();
   const pageSize = 10;
-  const filteredTaxpayers = useMemo(() => mockTaxpayers.filter((taxpayer) => {
+  const filteredTaxpayers = mockTaxpayers.filter((taxpayer) => {
     const normalizedQuery = query.trim().toLowerCase();
     const matchesQuery = !normalizedQuery || `${taxpayer.name} ${taxpayer.id} ${taxpayer.village}`.toLowerCase().includes(normalizedQuery);
     const matchesType = businessType === "Semua" || taxpayer.type === businessType;
     const matchesDistrict = district === "Semua" || taxpayer.district === district;
     return matchesQuery && matchesType && matchesDistrict;
-  }), [businessType, district, query]);
+  });
   const totalPages = Math.max(1, Math.ceil(filteredTaxpayers.length / pageSize));
   const visibleTaxpayers = filteredTaxpayers.slice((Math.min(page, totalPages) - 1) * pageSize, Math.min(page, totalPages) * pageSize);
   const metrics = [
@@ -137,7 +250,7 @@ export function TaxpayerContent() {
 
   return (
     <div className="dashboard-content taxpayer-content">
-      <div className="taxpayer-heading"><div><h1>Semua Wajib Pajak</h1><p>Database utama objek pajak PBJT yang dipantau BAPENDA</p></div><button className="primary-action"><Plus size={18} />Tambah Wajib Pajak</button></div>
+      <div className="taxpayer-heading"><div><h1>Semua Wajib Pajak</h1><p>Database utama objek pajak PBJT yang dipantau BAPENDA</p></div><button className="primary-action" onClick={() => setAddDialogOpen(true)}><Plus size={18} />Tambah Wajib Pajak</button></div>
       <div className="taxpayer-metrics">{metrics.map(({ label, value, note, icon: Icon, tone }) => <article className="overview-metric" key={label}><div className="overview-metric-label"><span>{label}</span><i className={`metric-icon ${tone}`}><Icon size={19} /></i></div><strong>{value}</strong><p>{note}</p></article>)}</div>
       <section className="district-panel"><header className="district-header"><div className="district-heading"><div className="district-icon"><MapPin size={19} /></div><div><h2>Sebaran WP per Kecamatan &amp; Desa</h2><p>Wilayah administratif Kabupaten Kepulauan Mentawai - Kode Kemendagri 13.09</p></div></div><div className="district-totals"><span>Kecamatan terisi<strong>{districts.filter((district) => district.taxpayerCount > 0).length}/{districts.length}</strong></span><span>Desa terisi<strong>{districts.reduce((total, district) => total + district.filledVillages, 0)}/43</strong></span><span>Total WP<strong>{mockTaxpayers.length}</strong></span></div></header><div className="district-grid">{districts.slice(0, 10).map((district) => <article className="district-card" key={district.name}><div className="district-card-top"><div><h3>{district.name} <small>{district.code}</small></h3><p>{district.villages.length} desa - {district.taxpayerCount} terisi data</p></div><span className={district.taxpayerCount === 0 ? "empty-badge" : "wp-badge"}>{district.taxpayerCount} WP</span></div><div className="village-list">{district.villages.slice(0, 5).map((village) => <span className={mockTaxpayers.some((taxpayer) => taxpayer.district === district.name && taxpayer.village === village) ? "filled-village" : ""} key={village}>{village}</span>)}</div></article>)}</div></section>
       <section className="taxpayer-table-panel">
@@ -145,6 +258,7 @@ export function TaxpayerContent() {
         <div className="taxpayer-table-wrap"><table className="taxpayer-table"><thead><tr><th>NAMA WP</th><th>NPWPD</th><th>JENIS</th><th>KECAMATAN</th><th>TRANSAKSI</th><th>OMZET</th><th>ESTIMASI</th><th>REALISASI</th><th>STATUS</th></tr></thead><tbody>{visibleTaxpayers.map((taxpayer) => { const transactions = mockTransactions.filter((transaction) => { const date = new Date(transaction.date); return transaction.taxpayerId === taxpayer.id && date.getFullYear() === Number(year) && (month === "Semua" || monthLabelsLong[date.getMonth()] === month); }); const revenue = transactions.reduce((sum, transaction) => sum + transaction.amount, 0); const records = getSptpdHistory(taxpayer.id, Number(year)); const selectedRecords = month === "Semua" ? records : records.filter((record) => record.period === month); const reported = selectedRecords.reduce((sum, record) => sum + record.pbjtAmount, 0); return <tr key={taxpayer.id} tabIndex={0} role="button" onClick={() => setSelectedTaxpayerId(taxpayer.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setSelectedTaxpayerId(taxpayer.id); }}><td><div className="taxpayer-name-cell"><span className="taxpayer-avatar"><Image src={taxpayer.image} alt="" fill sizes="50px" /></span><div><strong>{taxpayer.name}</strong><small>{taxpayer.village}</small></div></div></td><td>P.{taxpayer.id.replace("wp-", "")}.001</td><td>{taxpayer.type}</td><td>{taxpayer.district}</td><td>{transactions.length}</td><td>{formatRupiah(revenue)}</td><td>{formatRupiah(Math.round(revenue * mockConfig.pbjtRate))}</td><td className="realized-value">{formatRupiah(reported)}</td><td><span className={taxpayer.active ? "active-status" : "inactive-status"}><i />{taxpayer.active ? "Aktif" : "Nonaktif"}</span></td></tr>; })}</tbody></table></div>
         <footer className="taxpayer-table-footer"><span>Menampilkan {visibleTaxpayers.length} dari {filteredTaxpayers.length} wajib pajak</span><div className="pagination"><button aria-label="Halaman sebelumnya" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}><ChevronLeft size={16} /></button><span>Halaman {Math.min(page, totalPages)} dari {totalPages}</span><button aria-label="Halaman berikutnya" disabled={page >= totalPages} onClick={() => setPage((current) => Math.min(totalPages, current + 1))}><ChevronRight size={16} /></button></div></footer>
       </section>
+      {addDialogOpen && <AddTaxpayerDialog onClose={() => setAddDialogOpen(false)} onSaved={() => { setAddDialogOpen(false); void syncDashboardData().catch(() => undefined).finally(() => setDataVersion((value) => value + 1)); }} />}
     </div>
   );
 }
