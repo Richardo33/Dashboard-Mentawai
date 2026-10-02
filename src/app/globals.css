@@ -3353,3 +3353,31 @@ body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSyst
 .risk-grid { align-items: start; }
 .anomaly-card { height: auto; }
 .risk-grid { align-items: stretch; }
+
+/* Page titles must grow when text or filters wrap. */
+:is(.overview-heading, .taxpayer-heading, .transactions-page-heading,
+    .activity-heading, .estimation-heading, .realization-heading,
+    .reconciliation-heading, .gap-heading, .sptpd-heading,
+    .stpd-page-heading, .compliance-heading, .alert-center-heading,
+    .mpos-heading, .account-heading) {
+  height: auto;
+  min-height: 0;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+
+:is(.overview-heading, .taxpayer-heading, .transactions-page-heading,
+    .activity-heading, .estimation-heading, .realization-heading,
+    .reconciliation-heading, .gap-heading, .sptpd-heading,
+    .stpd-page-heading, .compliance-heading, .alert-center-heading,
+    .mpos-heading, .account-heading) > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.overview-filters,
+.overview-filter-row,
+.estimation-filters {
+  flex-wrap: wrap;
+}
