@@ -122,7 +122,7 @@ export default function Home() {
     const { error: googleError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: { prompt: "select_account" },
       },
     });
@@ -148,6 +148,15 @@ export default function Home() {
     if (loginError || !data.user) {
       setError("Email atau password belum sesuai.");
       return;
+    }
+    const metadata = data.user.user_metadata ?? {};
+    const hasLegacyAvatar = [metadata.avatar, metadata.avatar_url].some((value) => typeof value === "string" && (value.startsWith("data:") || value.length > 512));
+    if (hasLegacyAvatar) {
+      const { error: cleanupError } = await supabase.auth.updateUser({ data: { avatar: null, avatar_url: null } });
+      if (cleanupError) {
+        setError("Session akun terlalu besar. Jalankan migration cleanup metadata avatar di Supabase, lalu coba login lagi.");
+        return;
+      }
     }
     router.push("/dashboard");
   }
