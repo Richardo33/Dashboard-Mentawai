@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useId, useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -44,7 +44,6 @@ const initialTaxpayerForm: NewTaxpayerForm = {
 function AddTaxpayerDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const districts = getDistricts();
   const [form, setForm] = useState<NewTaxpayerForm>({ ...initialTaxpayerForm, district: districts[0]?.name ?? "", village: districts[0]?.villages[0] ?? "" });
-  const generatedId = useId();
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const [saving, setSaving] = useState(false);
@@ -75,19 +74,22 @@ function AddTaxpayerDialog({ onClose, onSaved }: { onClose: () => void; onSaved:
   };
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (saving) return;
     if (!supabase) {
       setError("Koneksi database belum tersedia.");
       return;
     }
     setSaving(true);
     setError("");
-    const id = `wp-${generatedId.replace(/[^a-zA-Z0-9]/g, "")}`;
     let imagePath: string | null = null;
+    let imageUploaded = false;
     try {
+      const id = `wp-${crypto.randomUUID()}`;
       if (photo) {
         imagePath = `${id}/${photo.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
         const { error: uploadError } = await supabase.storage.from("taxpayer-images").upload(imagePath, photo, { contentType: photo.type, upsert: false });
         if (uploadError) throw uploadError;
+        imageUploaded = true;
       }
       const { error: insertError } = await supabase.from("taxpayers").insert({
         id,
@@ -110,8 +112,12 @@ function AddTaxpayerDialog({ onClose, onSaved }: { onClose: () => void; onSaved:
       if (insertError) throw insertError;
       onSaved();
     } catch (saveError) {
-      if (imagePath) await supabase.storage.from("taxpayer-images").remove([imagePath]);
-      setError(saveError instanceof Error ? saveError.message : "Wajib pajak gagal disimpan.");
+      if (imageUploaded && imagePath) {
+        await supabase.storage.from("taxpayer-images").remove([imagePath]).catch(() => undefined);
+      }
+      const message = saveError && typeof saveError === "object" && "message" in saveError
+        && typeof saveError.message === "string" ? saveError.message : "Wajib pajak gagal disimpan.";
+      setError(message);
     } finally {
       setSaving(false);
     }
